@@ -1,241 +1,265 @@
-import json
-from collections import defaultdict
-from typing import List, Optional
-
+from typing import TypeVar, Type, Optional, List, Dict, Any
 import pandas as pd
-from pydantic import BaseModel, Field, FilePath
-
-# from validation import (
-#     LongData,
-#     LongDataRaw,
-#     LongDataAvg,
-#     WideDataNumeric,
-#     WideDataNoBase,
-#     WideDataMinMax,
-#     LongDataMinMax,
-#     LongDataDT,
-#     LongDataDTMinMax,
-#     MinTempData,
-#     LayoutDynamicData,
-#     validate_df_dynamic_model,
-# )
+from pydantic import BaseModel, ValidationError, Field, model_validator, 
+from pydantic_core import ErrorDetails
+import logging
+# Define a generic type for Pydantic models
+PydanticModel = TypeVar("PydanticModel", bound=BaseModel)
 
 
-class Replicate(BaseModel):
-    well_row: str
-    well_column: str
-    well_name: str
-    # temp_data: Optional[pd.DataFrame] = None
+# def validate_df_with_pydantic(
+#     df: pd.DataFrame, model: Type[PydanticModel]
+# ) -> pd.DataFrame:
+#     """
+#     Validates a DataFrame against a Pydantic model.
+
+#     Args:
+#         df: The pandas DataFrame to validate.
+#         model: The Pydantic model class to validate each row against.
+
+#     Returns:
+#         A new DataFrame with validated and potentially coerced data.
+
+#     Raises:
+#         ValidationError: If any row fails validation.
+#         ValueError: If the input is not a DataFrame or is empty.
+#     """
+#     if not isinstance(df, pd.DataFrame):
+#         raise ValueError("Input must be a pandas DataFrame.")
+#     if df.empty:
+#         raise ValueError("Input DataFrame is empty.")
+#     # Ensure the column names of the dataframe are strings
+#     df.columns = df.columns.astype(str)
+#     try:
+#         # Convert, validate, and dump back to dicts
+#         validated_data = [
+#             model(**{str(k): v for k, v in row.items()}).model_dump()
+#             for row in df.to_dict(orient="records")
+#         ]
+#         # Create a new DataFrame from validated data
+#         return pd.DataFrame(validated_data)
+#     except ValidationError as e:
+#         print(f"DataFrame validation failed against model '{model.__name__}':")
+#         # You might want to provide more context about *which* rows failed
+#         raise e
+#     except Exception as e:
+#         print(f"An unexpected error occurred during validation: {e}")
+#         raise e
+
+class LongData(BaseModel):
+    Temperature: float = Field(..., description="Temperature in Celsius.")
+    value: float = Field(..., description="Measured value at the given temperature and well.")
+    ligand: str = Field(..., description="Ligand identifier (e.g., 'LigandA').")
+    protein: str = Field(..., description="Protein identifier (e.g., 'ProteinX').")
+    buffer: str = Field(..., description="Buffer condition (e.g., 'Buffer1').")
+    
+
+class LongDataRaw(LongData):
+    well: str = Field(..., description="Well identifier (e.g., 'A1', 'B2').")
+
+    well_uqcond: str = Field(
+        ...,
+        description="Unique Combination of well ligand, protein, and buffer conditions.",
+    )
+
+    
+class LongDataAvg(LongData):
+    uq_cond: Optional[str] = Field(
+        None,
+        description="Unique condition identifier combining ligand, protein, and buffer.",
+    )
+    
 
 
-class UniqueCondition(BaseModel):
-    full_name: str = ""
-    concentration: str = ""
-    ligand_name: str = ""
-    protein_name: str = ""
-    buffer_condition: str = ""
-    replicates: List[Replicate] = Field(default_factory=list)
+class WideDataNumeric(BaseModel):
+    """
+    Represents a row in a DataFrame.
+    It has fixed 'id' and 'category' fields, and allows for any number
+    of additional dynamic fields, which are expected to be numeric.
+    """
 
+    # --- Fixed fields ---
+    Temperature: float = Field(..., description="Temperature in Celsius.")
+ 
+    # --- Configuration to allow extra fields ---
+    # This tells Pydantic to accept fields not explicitly defined above.
+    # These extra fields will be stored in `self.model_extra` and included in `model_dump()`.
+    model_config = {"extra": "allow"}
 
-def get_unique_conditions(
-    layout_data: FilePath, print_to_check: Optional[bool] = False
-) -> dict[str, UniqueCondition]:
-    layout_df = pd.read_csv(layout_data)
+    # --- Validator for dynamic/extra fields ---
+    @model_validator(mode="after")
+    def check_dynamic_features_are_numeric(self) -> "WideDataNumeric":
+        """
+        Validates that all dynamically added fields (extras) are numeric (int or float).
+        This validator runs after the initial parsing of known fields.
+        """
+        if self.model_extra:  # self.model_extra contains the dict of dynamic fields
+            for field_name, value in self.model_extra.items():
+                if not isinstance(value, float):
+                    # Raise a ValueError; Pydantic will catch this and incorporate it
+                    # into its standard ValidationError structure.
+                    raise ValueError(
+                        f"Dynamic feature '{field_name}' must be numeric (int or float), "
+                        f"but got type {type(value).__name__} with value '{value}'."
+                    )
+        return self
 
-    experiment_info = defaultdict(UniqueCondition)
-    replicates = set()
-    # loop through columns in layout
-    for col in layout_df.columns:
-        if col.startswith("well") or col.startswith("Well"):
-            continue
-        replicates.update(layout_df[col].unique())
-
-    for index, row in layout_df.iterrows():
-        for col in layout_df.columns:
-            if col.startswith("well") or col.startswith("Well"):
-                continue
-            condition = row[col]
-
-            if pd.isna(condition) or condition == "" or condition == "0_0_0_0":
-                continue
-            parts = condition.split("_")
-            if len(parts) < 4:
-                continue
-            # print(parts)
-            full_name = condition
-            # print(full_name)
-            concentration = parts[-4]
-            ligand_name = parts[-3]
-            protein_name = parts[-2]
-            buffer_condition = parts[-1]
-
-            replicate = Replicate(
-                well_row=row["Well"],
-                well_column=str(col),
-                well_name=row["Well"] + str(col),
+class WideDataNoBase(WideDataNumeric):
+    
+    @model_validator(mode="after")
+    def check_no_col_names_contain_npc(self) -> "WideDataNoBase":
+        """
+        Validates that no column names contain 'npc'.
+        This validator runs after the initial parsing of known fields.
+        """
+        
+        if self.model_extra:
+            for field_name in self.model_extra.keys():
+                if "NPC" in field_name.lower():
+                    raise ValueError(
+                        f"Column name '{field_name}' contains 'NPC', which should have been removed by this stage."
+                    )
+        return self
+    
+class WideDataMinMax(WideDataNoBase):
+    
+    @model_validator(mode="after")
+    def check_min_max_columns(self) -> "WideDataMinMax":
+        """checks that all columns except Temp are between 0 and 1, and that Temp is NOT between 0 and 1."""
+        if self.model_extra:
+            for field_name, value in self.model_extra.items():
+                if not (0 <= value <= 1):
+                    raise ValueError(
+                        f"Column '{field_name}' must be between 0 and 1, but got {value}."
+                    )
+        if self.Temperature <1:
+            logging.warning(
+                f"Temperature '{self.Temperature}' is less than 1, which is unusual for this context."
             )
-            condition = UniqueCondition(
-                full_name=full_name,
-                concentration=concentration,
-                ligand_name=ligand_name,
-                protein_name=protein_name,
-                buffer_condition=buffer_condition,
+        return self
+    
+class LongDataMinMax(LongDataAvg):
+    @model_validator(mode="after")
+    def check_min_max_columns(self) -> "LongDataMinMax":
+        """checks that all columns except Temp are between 0 and 1, and that Temp is NOT between 0 and 1."""
+        if not (0 <= self.value <= 1):
+            raise ValueError(
+                f"Value '{self.value}' must be between 0 and 1, but got {self.value}."
             )
-            if full_name in replicates:
-                experiment_info[full_name] = condition
-                # remove the replacate from the replicates set
-                replicates.remove(full_name)
-                experiment_info[full_name].replicates.append(replicate)
-            else:
-                experiment_info[full_name].replicates.append(replicate)
-    if print_to_check:
-        # Save the experiment info to a JSON file
-        # combine the stem of the file with the experiment_info
-        info_path = layout_data.stem + "_experiment_info.json"
-        with open(info_path, "w") as f:
-            # exp_dict = {k: v.model_dump() for k, v in experiment_info.items()}
-            json.dump({k: v.model_dump() for k, v in experiment_info.items()}, f, indent=4)
-    return experiment_info
+        if self.Temperature < 1:
+            logging.warning(
+                f"Temperature '{self.Temperature}' is less than 1, which is unusual for this context."
+            )
+        return self
+    
+class LongDataDT(LongDataAvg):
+    # how to validate this?
+    pass
+
+class LongDataDTMinMax(LongDataDT):
+    pass
+
+class MinTempData(BaseModel):
+    # include convert to float
+    pass
 
 
-def initial_raw_data_organize(
-    initial_raw_data: pd.DataFrame,
-    experiment_info: dict[str, UniqueCondition],
+
+class LayoutDynamicData(BaseModel):
+    """
+    Represents a row in a DataFrame.
+    It has fixed 'id' and 'category' fields, and allows for any number
+    of additional dynamic fields, which are expected to be numeric.
+    """
+
+    # --- Fixed fields ---
+    well: str = Field(..., description="Well identifier (e.g., 'A1', 'B2').")
+
+
+    # --- Configuration to allow extra fields ---
+    # This tells Pydantic to accept fields not explicitly defined above.
+    # These extra fields will be stored in `self.model_extra` and included in `model_dump()`.
+    model_config = {"extra": "allow"}
+
+    # --- Validator for dynamic/extra fields ---
+    @model_validator(mode="after")
+    def check_dynamic_features_are_str(self) -> "LayoutDynamicData":
+        """
+        Validates that all dynamically added fields (extras) are str
+        This validator runs after the initial parsing of known fields.
+        """
+        if self.model_extra:  # self.model_extra contains the dict of dynamic fields
+            for field_name, value in self.model_extra.items():
+                if not isinstance(value, (str)):
+                    # Raise a ValueError; Pydantic will catch this and incorporate it
+                    # into its standard ValidationError structure.
+                    raise ValueError(
+                        f"Dynamic feature '{field_name}' must be numeric (int or float), "
+                        f"but got type {type(value).__name__} with value '{value}'."
+                    )
+        return self
+
+def validate_df_dynamic_model(
+    df: pd.DataFrame, model_class: Type[BaseModel]
 ) -> pd.DataFrame:
     """
-    Organizes the raw data based on the layout data.
+    Validates each row of a pandas DataFrame against the provided Pydantic model.
+
+    Args:
+        df: The pandas DataFrame to validate.
+        model_class: The Pydantic model class to use for validation.
+
+    Returns:
+        A new pandas DataFrame containing the validated and potentially coerced data.
+
+    Raises:
+        TypeError: If the input 'df' is not a pandas DataFrame.
+        ValidationError: If any row in the DataFrame fails validation against the model.
+                         The raised error will contain details for all failing rows.
     """
-    # Create a new DataFrame to hold the organized data
-    raw_data_long = initial_raw_data.melt(
-        id_vars=["Temperature"], var_name="well", value_name="value"
-    )
-    for condition, info in experiment_info.items():
-        ligand = info.ligand_name
-        protein = info.protein_name
-        buffer = info.buffer_condition
-        concentration = info.concentration
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Input must be a pandas DataFrame.")
 
-        replicate_wells = [rep.well_name for rep in info.replicates]
-
-        # create a mask for the rows that have a well that is in replicate_wells
-        mask = raw_data_long["well"].isin(replicate_wells)
-
-        # add the columns to the raw data long
-        raw_data_long.loc[mask, "ligand"] = ligand
-        raw_data_long.loc[mask, "protein"] = protein
-        raw_data_long.loc[mask, "buffer"] = buffer
-        raw_data_long.loc[mask, "concentration"] = concentration
-
-        raw_data_long["well_unqcond"] = (
-            raw_data_long["well"]
-            + "_"
-            + raw_data_long["concentration"]
-            + "_"
-            + raw_data_long["ligand"]
-            + "_"
-            + raw_data_long["protein"]
-            + "_"
-            + raw_data_long["buffer"]
+    if df.empty:
+        print(
+            "Warning: Input DataFrame is empty. Returning an empty DataFrame based on model fields."
         )
-    return raw_data_long
+        # Create an empty DataFrame with columns based on the model's known fields.
+        # Dynamic columns aren't known at this stage for an empty input.
+        return pd.DataFrame(columns=list(model_class.model_fields.keys()))
 
+    validated_rows_data: List[Dict[str, Any]] = []
+    all_error_details: List[ErrorDetails] = (
+        []
+    )  # To collect Pydantic's ErrorDetail dicts
 
-def filter_organized_data(
-    organized_data: pd.DataFrame,
-    wells_to_filter: list[str],
-) -> pd.DataFrame:
-    """
-    Filters the organized data based on the provided parameters.
-    """
-    # first check if each well in wells is in the organized_data
-    for well in wells_to_filter:
-        if well not in organized_data["well"].unique():
-            print(f"Warning: Well {well} not found in organized data.")
-            continue
-    # Filter the organized data to remove the specified wells
-    for well in wells_to_filter:
-        organized_data = organized_data[organized_data["well"] != well]
-        print(f"Filtered out well: {well}")
+    # Ensure DataFrame columns are strings for **row unpacking, though model_validate is safer
+    df.columns = df.columns.astype(str)
 
-    return organized_data
+    for idx, row_dict in enumerate(df.to_dict(orient="records")):
+        try:
+            # Use model_validate for Pydantic v2
+            validated_model_instance = model_class.model_validate(row_dict)
+            # model_dump() will include extra fields by default if extra='allow'
+            # It also handles alias generation, exclude_none, etc., if configured.
+            validated_rows_data.append(validated_model_instance.model_dump())
+        except ValidationError as e:
+            # e.errors() returns a list of ErrorDetail dictionaries.
+            # We prepend the DataFrame row index to the 'loc' (location)
+            # of each error for better context.
+            for error_detail in e.errors():
+                current_loc = error_detail.get("loc", ())
+                # Ensure current_loc is a tuple before prepending
+                if not isinstance(current_loc, tuple):
+                    current_loc = (current_loc,)
+                error_detail["loc"] = (f"row_{idx}",) + current_loc
+                all_error_details.append(error_detail)
 
+    if all_error_details:
+        # If there were any errors, construct and raise a single ValidationError
+        # containing all collected error details from all rows.
+        # The second argument to ValidationError is the model class itself.
+        raise ValidationError(all_error_details, model_class)
 
-def split_unqcon_column(data: pd.DataFrame) -> pd.DataFrame:
-    parts = data["unqcond"].str.split("_", expand=True)
-    data["concentration"] = parts[0]
-    data["ligand"] = parts[1]
-    data["protein"] = parts[2]
-    data["buffer"] = parts[3]
-    return data
-
-
-def avg_across_replicates(
-    organized_data: pd.DataFrame,
-) -> pd.DataFrame:
-    """
-    Averages the data across replicates.
-    """
-    # Group by the unique condition and temperature, then average the values
-    organized_data["unqcond"] = (
-        organized_data["concentration"]
-        + "_"
-        + organized_data["ligand"]
-        + "_"
-        + organized_data["protein"]
-        + "_"
-        + organized_data["buffer"]
-    )
-
-    # Add a column for the unique condition
-    averaged_data = (
-        organized_data.groupby(["Temperature", "unqcond"]).agg({"value": "mean"}).reset_index()
-    )
-    averaged_data_pivot = averaged_data.pivot(
-        index="Temperature", columns="unqcond", values="value"
-    )
-
-    averaged_data_pivot = split_unqcon_column(averaged_data_pivot)
-
-    return averaged_data_pivot
-
-
-def _find_background_column(
-    averaged_data_pivot: pd.DataFrame,
-    concentration: str,
-    ligand: str,
-    protein: str,
-    buffer: str,
-) -> Optional[str]:
-    if protein == "NPC":
-        return None  # Dont remove background for NPC
-    for col in averaged_data_pivot.columns:
-        if f"{concentration}_{ligand}_NPC_{buffer}" in col:
-            return col
-    return None
-
-
-def subtract_background(data: pd.DataFrame) -> pd.DataFrame:
-    for col in data.columns:
-        parts = col.split("_")
-        if len(parts) < 4:
-            continue
-        concentration = parts[0]
-        ligand = parts[1]
-        protein = parts[2]
-        buffer = parts[3]
-
-        background_col = _find_background_column(data, concentration, ligand, protein, buffer)
-
-        if background_col and background_col in data.columns:
-            data[col] = data[col] - data[background_col]
-    return data
-
-
-def min_max_scale(data: pd.DataFrame) -> pd.DataFrame:
-    for col in data.columns:
-        if col.startswith("Temperature"):
-            continue
-        if data[col].max() - data[col].min() == 0:
-            continue  # Avoid division by zero
-        data[col] = (data[col] - data[col].min()) / (data[col].max() - data[col].min())
-    return data
+    # If all rows are valid, create a new DataFrame from the validated data.
+    return pd.DataFrame(validated_rows_data)
