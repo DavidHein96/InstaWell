@@ -1,0 +1,13 @@
+repos:
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.7.1 # use the latest available
+    hooks:
+      - id: nbstripout
+        args:
+          # keep the notebook minimal  mimic "Clear All Output"
+          - --drop-empty-cells
+          - --extra-keys
+          # remove execution counts & transient metadata
+          - metadata.kernelspec
+          - metadata.language_info
+          - metadata.widgets
