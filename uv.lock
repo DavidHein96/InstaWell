@@ -995,6 +995,7 @@ build = [
     { name = "twine" },
 ]
 dash = [
+    { name = "dash" },
     { name = "dash-bootstrap-components" },
 ]
 dev = [
@@ -1027,7 +1028,8 @@ test = [
 requires-dist = [
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.8.6" },
     { name = "click", specifier = ">=8.1,<9.0" },
-    { name = "dash-bootstrap-components", marker = "extra == 'dash'", specifier = ">=2.0.4" },
+    { name = "dash", marker = "extra == 'dash'", specifier = ">=2.14.0" },
+    { name = "dash-bootstrap-components", marker = "extra == 'dash'", specifier = ">=1.5.0" },
     { name = "datamodel-code-generator", extras = ["http"], marker = "extra == 'dev'", specifier = ">=0.32.0" },
     { name = "hatchling", marker = "extra == 'build'", specifier = ">=1.27.0" },
     { name = "jupyter", marker = "extra == 'notebooks'", specifier = ">=1.1.1" },

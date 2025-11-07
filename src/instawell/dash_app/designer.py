@@ -1,0 +1,439 @@
+"""
+Visual plate layout designer for creating layout CSV files.
+
+Allows users to interactively design their plate layouts by selecting wells
+and assigning conditions.
+"""
+
+import re
+import string
+from typing import Dict, List, Tuple
+
+import dash_bootstrap_components as dbc
+import pandas as pd
+from dash import dash_table, dcc, html
+
+
+# Plate configurations
+PLATE_TYPES = {
+    "96": (8, 12),   # 8 rows, 12 columns
+    "384": (16, 24),  # 16 rows, 24 columns
+}
+
+WELL_PATTERN = re.compile(r"^\s*([A-Za-z]+)\s*0*([0-9]+)\s*$")
+
+
+def normalize_well(well_str: str) -> str:
+    """Normalize well name like 'A01' -> 'A1'."""
+    match = WELL_PATTERN.match(str(well_str))
+    if not match:
+        return str(well_str).strip()
+    return f"{match.group(1).upper()}{int(match.group(2))}"
+
+
+def get_row_labels(n_rows: int) -> List[str]:
+    """Get row labels (A, B, C, ...)."""
+    return list(string.ascii_uppercase[:n_rows])
+
+
+def infer_plate_from_raw(raw_df: pd.DataFrame) -> Tuple[str, int, int, List[str]]:
+    """
+    Infer plate type and available wells from raw data columns.
+
+    Args:
+        raw_df: Raw data DataFrame with well names as columns
+
+    Returns:
+        Tuple of (plate_type, rows, cols, available_wells)
+    """
+    wells = []
+    max_row = "A"
+    max_col = 1
+
+    for col in raw_df.columns:
+        if col == "Temperature":
+            continue
+        well = normalize_well(col)
+        wells.append(well)
+
+        match = WELL_PATTERN.match(well)
+        if match:
+            row = match.group(1).upper()
+            col_num = int(match.group(2))
+            max_row = max(max_row, row)
+            max_col = max(max_col, col_num)
+
+    # Determine plate type
+    rows_needed = ord(max_row) - ord("A") + 1
+    cols_needed = max_col
+
+    if rows_needed <= 8 and cols_needed <= 12:
+        plate_type = "96"
+    else:
+        plate_type = "384"
+
+    rows, cols = PLATE_TYPES[plate_type]
+    return plate_type, rows, cols, sorted(set(wells))
+
+
+def create_plate_grid(
+    plate_type: str,
+    cells: Dict[str, Dict],
+    available_wells: List[str] = None,
+) -> html.Div:
+    """
+    Create an interactive plate grid using Dash DataTable.
+
+    Args:
+        plate_type: '96' or '384'
+        cells: Dict mapping well names to condition dicts
+        available_wells: List of wells that have data (highlighted)
+
+    Returns:
+        Dash HTML div containing the grid
+    """
+    rows, cols = PLATE_TYPES.get(plate_type, PLATE_TYPES["96"])
+    row_labels = get_row_labels(rows)
+
+    # Create table data
+    data = []
+    for row_label in row_labels:
+        row_data = {"Well": row_label}
+        for col_num in range(1, cols + 1):
+            well_name = f"{row_label}{col_num}"
+            if well_name in cells:
+                cond = cells[well_name]
+                # Format: "10uM ATP Protein1"
+                text = f"{cond.get('concentration', '')}{cond.get('unit', '')} {cond.get('ligand', '')} {cond.get('protein', '')}"
+                row_data[str(col_num)] = text.strip()
+            else:
+                row_data[str(col_num)] = ""
+        data.append(row_data)
+
+    # Column definitions
+    columns = [{"name": "Well", "id": "Well"}]
+    columns += [{"name": str(i), "id": str(i)} for i in range(1, cols + 1)]
+
+    # Styling for available wells (if raw data provided)
+    style_data_conditional = []
+    if available_wells:
+        for well in available_wells:
+            match = WELL_PATTERN.match(well)
+            if not match:
+                continue
+            row_label = match.group(1).upper()
+            col_id = str(int(match.group(2)))
+
+            if row_label in row_labels:
+                style_data_conditional.append(
+                    {
+                        "if": {
+                            "filter_query": f'{{Well}} = "{row_label}"',
+                            "column_id": col_id,
+                        },
+                        "backgroundColor": "rgba(13, 110, 253, 0.1)",
+                        "border": "1px solid rgba(13, 110, 253, 0.3)",
+                    }
+                )
+
+    # Create DataTable
+    table = dash_table.DataTable(
+        id="designer-plate-grid",
+        data=data,
+        columns=columns,
+        selected_cells=[],
+        cell_selectable=True,
+        editable=False,
+        style_as_list_view=True,
+        style_table={"maxHeight": "60vh", "overflowY": "auto", "overflowX": "auto"},
+        fixed_rows={"headers": True},
+        style_cell={
+            "textAlign": "center",
+            "padding": "6px",
+            "fontSize": "12px",
+            "minWidth": "80px",
+            "width": "80px",
+            "maxWidth": "80px",
+            "whiteSpace": "nowrap",
+            "overflow": "hidden",
+            "textOverflow": "ellipsis",
+        },
+        style_header={
+            "backgroundColor": "rgb(248, 249, 250)",
+            "fontWeight": "bold",
+        },
+        style_data_conditional=style_data_conditional + [
+            {
+                "if": {"column_id": "Well"},
+                "backgroundColor": "rgb(248, 249, 250)",
+                "fontWeight": "bold",
+            }
+        ],
+        css=[
+            {
+                "selector": ".dash-spreadsheet td.cell--selected",
+                "rule": "background-color: rgba(13, 110, 253, 0.25) !important;",
+            },
+        ],
+    )
+
+    return html.Div(
+        [
+            table,
+            html.Small(
+                "Click and drag to select wells, then assign conditions below",
+                className="text-muted mt-2 d-block",
+            ),
+        ]
+    )
+
+
+def designer_card():
+    """Create the layout designer UI card."""
+    return dbc.Card(
+        [
+            dbc.CardHeader(
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            html.H5(
+                                [html.I(className="fa fa-th me-2"), "Layout Designer"],
+                                className="mb-0",
+                            ),
+                            width="auto",
+                        ),
+                        dbc.Col(
+                            dbc.Button(
+                                "Hide Designer",
+                                id="designer-toggle-btn",
+                                color="secondary",
+                                size="sm",
+                                outline=True,
+                            ),
+                            className="text-end",
+                        ),
+                    ],
+                    align="center",
+                )
+            ),
+            dbc.Collapse(
+                dbc.CardBody(
+                    [
+                        # Stores for state management
+                        dcc.Store(
+                            id="designer-state",
+                            data={
+                                "plate_type": "96",
+                                "cells": {},  # {well_name: {concentration, unit, ligand, protein, buffer}}
+                                "available_wells": [],
+                            },
+                        ),
+                        dcc.Store(id="designer-selected-wells", data=[]),
+                        # Controls row
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    [
+                                        html.Label("Plate Type", className="fw-bold"),
+                                        dcc.Dropdown(
+                                            id="designer-plate-type",
+                                            options=[
+                                                {"label": "96-well", "value": "96"},
+                                                {"label": "384-well", "value": "384"},
+                                            ],
+                                            value="96",
+                                            clearable=False,
+                                        ),
+                                    ],
+                                    width=12,
+                                    md=3,
+                                    className="mb-3",
+                                ),
+                                dbc.Col(
+                                    [
+                                        html.Label(
+                                            "Import from Raw CSV (optional)",
+                                            className="fw-bold",
+                                        ),
+                                        dcc.Upload(
+                                            id="designer-raw-upload",
+                                            children=html.Div(
+                                                [
+                                                    html.I(
+                                                        className="fa fa-file-csv me-2"
+                                                    ),
+                                                    "Click to import wells from raw.csv",
+                                                ],
+                                                className="text-center",
+                                            ),
+                                            style={
+                                                "width": "100%",
+                                                "height": "38px",
+                                                "lineHeight": "38px",
+                                                "borderWidth": "1px",
+                                                "borderStyle": "dashed",
+                                                "borderRadius": "5px",
+                                                "textAlign": "center",
+                                                "cursor": "pointer",
+                                            },
+                                            multiple=False,
+                                        ),
+                                    ],
+                                    width=12,
+                                    md=9,
+                                    className="mb-3",
+                                ),
+                            ]
+                        ),
+                        # Plate grid
+                        html.Div(id="designer-grid-container", className="mb-3"),
+                        html.Hr(),
+                        # Condition assignment form
+                        html.Div(
+                            [
+                                html.H6("Assign Condition to Selected Wells"),
+                                html.Div(
+                                    id="designer-selected-wells-display",
+                                    className="mb-2 small text-muted",
+                                ),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            [
+                                                html.Label("Concentration"),
+                                                dbc.InputGroup(
+                                                    [
+                                                        dbc.Input(
+                                                            id="designer-concentration",
+                                                            type="number",
+                                                            placeholder="10",
+                                                        ),
+                                                        dbc.Select(
+                                                            id="designer-unit",
+                                                            options=[
+                                                                {"label": "nM", "value": "nM"},
+                                                                {"label": "uM", "value": "uM"},
+                                                                {"label": "mM", "value": "mM"},
+                                                            ],
+                                                            value="uM",
+                                                        ),
+                                                    ]
+                                                ),
+                                            ],
+                                            width=12,
+                                            md=3,
+                                            className="mb-3",
+                                        ),
+                                        dbc.Col(
+                                            [
+                                                html.Label("Ligand"),
+                                                dbc.Input(
+                                                    id="designer-ligand",
+                                                    placeholder="ATP",
+                                                ),
+                                            ],
+                                            width=12,
+                                            md=3,
+                                            className="mb-3",
+                                        ),
+                                        dbc.Col(
+                                            [
+                                                html.Label("Protein"),
+                                                dbc.Input(
+                                                    id="designer-protein",
+                                                    placeholder="Protein1 or NPC",
+                                                ),
+                                            ],
+                                            width=12,
+                                            md=3,
+                                            className="mb-3",
+                                        ),
+                                        dbc.Col(
+                                            [
+                                                html.Label("Buffer"),
+                                                dbc.Input(
+                                                    id="designer-buffer",
+                                                    placeholder="Buffer1",
+                                                ),
+                                            ],
+                                            width=12,
+                                            md=3,
+                                            className="mb-3",
+                                        ),
+                                    ]
+                                ),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            [
+                                                dbc.Button(
+                                                    [
+                                                        html.I(className="fa fa-check me-2"),
+                                                        "Assign to Wells",
+                                                    ],
+                                                    id="designer-assign-btn",
+                                                    color="primary",
+                                                    disabled=True,
+                                                ),
+                                                dbc.Button(
+                                                    [
+                                                        html.I(className="fa fa-eraser me-2"),
+                                                        "Clear Selected",
+                                                    ],
+                                                    id="designer-clear-btn",
+                                                    color="warning",
+                                                    className="ms-2",
+                                                    disabled=True,
+                                                ),
+                                                dbc.Button(
+                                                    [
+                                                        html.I(className="fa fa-trash me-2"),
+                                                        "Reset All",
+                                                    ],
+                                                    id="designer-reset-btn",
+                                                    color="danger",
+                                                    outline=True,
+                                                    className="ms-2",
+                                                ),
+                                            ],
+                                            width=12,
+                                        )
+                                    ]
+                                ),
+                            ]
+                        ),
+                        html.Hr(),
+                        # Export section
+                        html.Div(
+                            [
+                                html.H6("Export Layout"),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            [
+                                                dbc.Button(
+                                                    [
+                                                        html.I(
+                                                            className="fa fa-download me-2"
+                                                        ),
+                                                        "Download Layout CSV",
+                                                    ],
+                                                    id="designer-export-btn",
+                                                    color="success",
+                                                ),
+                                                dcc.Download(id="designer-download"),
+                                            ],
+                                            width=12,
+                                        )
+                                    ]
+                                ),
+                            ]
+                        ),
+                    ]
+                ),
+                id="designer-collapse",
+                is_open=False,
+            ),
+        ],
+        className="mb-4",
+    )

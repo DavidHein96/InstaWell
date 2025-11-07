@@ -25,6 +25,7 @@ dependencies = [
 
 [project.scripts]
 instawell = "instawell.cli:main"
+instawell-dash = "instawell.dash_app.app:main"
 
 [project.optional-dependencies]
 dev = [
@@ -39,13 +40,8 @@ dev = [
 test = ["pytest>=8.4.1"]
 notebooks = ["jupyter>=1.1.1"]
 build = ["hatchling>=1.27.0", "twine>=6.1.0"]
-dash = ["dash-bootstrap-components>=2.0.4"]
+dash = ["dash>=2.14.0", "dash-bootstrap-components>=1.5.0"]
 testing = ["pytest>=8.4.2", "pytest-cov>=7.0.0"]
-# integration = [
-#     "psycopg>=3.2.10",
-#     "pydantic[email]>=2.11.7",
-#     "testcontainers>=4.13.0",
-# ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/instawell"]
