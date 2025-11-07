@@ -87,3 +87,5 @@ build/
 .vscode/
 
 todo.md
+*.zip
+.coverage

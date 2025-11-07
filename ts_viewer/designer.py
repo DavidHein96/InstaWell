@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import string
+from pathlib import Path
 from typing import Dict, List
 
 import dash_bootstrap_components as dbc
@@ -35,6 +36,18 @@ def _safe_token(s: str) -> str:
     s = str(s or "").strip()
     s = re.sub(r"\s+", "", s)
     return s.replace("_", "-")
+
+
+def _upload_display(icon: str, label: str, help_text: str, filename: str | None = None):
+    name = Path(str(filename)).name if filename else label
+    main = f"{icon} {name}"
+    help_line = "Loaded successfully" if filename else help_text
+    return html.Div(
+        [
+            html.Span(main, className="upload-filename"),
+            html.Span(help_line, className="upload-help"),
+        ]
+    )
 
 
 def _infer_plate_from_raw_cols(raw_df: pd.DataFrame):
@@ -233,10 +246,12 @@ def designer_card():
                                         ),
                                         dcc.Upload(
                                             id="designer-raw-upload",
-                                            children=html.Div(["📈 Drag/Drop raw.csv or click"]),
+                                            children=_upload_display(
+                                                "📈", "raw.csv", "Drag & drop or click to choose raw readings"
+                                            ),
                                             multiple=False,
                                             accept=".csv",
-                                            className="border p-2 rounded text-center",
+                                            className="upload-zone",
                                         ),
                                         html.Small(
                                             id="designer-upload-debug", className="text-muted mt-2"
@@ -463,7 +478,7 @@ def _render_grid(plate: dict, cells: dict, available: List[str]) -> html.Div:
         style_cell={
             "textAlign": "center",
             "padding": "4px",
-            "fontSize": "12px",
+            "fontSize": "13px",
             "minWidth": "90px",
             "width": "90px",
             "maxWidth": "90px",
@@ -480,6 +495,14 @@ def _render_grid(plate: dict, cells: dict, available: List[str]) -> html.Div:
             {
                 "selector": ".dash-spreadsheet td.cell--selected",
                 "rule": "background-color: rgba(13,110,253,0.18) !important;",
+            },
+            {
+                "selector": ".dash-spreadsheet td, .dash-spreadsheet th",
+                "rule": "border-right: 1px dashed rgba(0,0,0,0.12);",
+            },
+            {
+                "selector": ".dash-spreadsheet td:last-child, .dash-spreadsheet th:last-child",
+                "rule": "border-right: none;",
             },
         ],
     )
@@ -669,6 +692,8 @@ def register_designer_callbacks(app):
         Output("designer-raw-store", "data", allow_duplicate=True),
         Output("designer-layout", "data", allow_duplicate=True),
         Output("designer-selection", "data", allow_duplicate=True),
+        Output("designer-raw-upload", "children", allow_duplicate=True),
+        Output("designer-raw-upload", "className", allow_duplicate=True),
         Input("designer-raw-upload", "contents"),
         State("designer-raw-upload", "filename"),
         State("designer-layout", "data"),
@@ -679,7 +704,14 @@ def register_designer_callbacks(app):
             "designer-raw-upload fired. has_contents=%s filename=%s", bool(contents), filename
         )
         if not contents:
-            return html.Span("No file received."), no_update, no_update, no_update
+            return (
+                html.Span("No file received."),
+                no_update,
+                no_update,
+                no_update,
+                _upload_display("📈", "raw.csv", "Drag & drop or click to choose raw readings"),
+                "upload-zone",
+            )
 
         try:
             from .io import df_from_upload
@@ -687,7 +719,14 @@ def register_designer_callbacks(app):
             raw_df = df_from_upload(contents, filename or "raw.csv")
         except Exception as e:
             app.logger.exception("Raw upload parse failed")
-            return html.Span(f"Could not read raw.csv: {e}"), no_update, no_update, no_update
+            return (
+                html.Span(f"Could not read raw.csv: {e}"),
+                no_update,
+                no_update,
+                no_update,
+                _upload_display("📈", "raw.csv", "Drag & drop or click to choose raw readings"),
+                "upload-zone",
+            )
 
         if "Temperature" not in raw_df.columns:
             return (
@@ -695,6 +734,8 @@ def register_designer_callbacks(app):
                 no_update,
                 no_update,
                 [],
+                _upload_display("📈", "raw.csv", "Drag & drop or click to choose raw readings"),
+                "upload-zone",
             )
 
         kind, rows, cols, wells = _infer_plate_from_raw_cols(raw_df)
@@ -708,7 +749,14 @@ def register_designer_callbacks(app):
         )
 
         app.logger.info("raw upload ok: shape=%s plate=%s wells=%d", raw_df.shape, kind, len(wells))
-        return preview, {"contents": contents, "filename": filename or "raw.csv"}, new_layout, []
+        return (
+            preview,
+            {"contents": contents, "filename": filename or "raw.csv"},
+            new_layout,
+            [],
+            _upload_display("📈", filename or "raw.csv", "Drag & drop or click to choose raw readings", filename or "raw.csv"),
+            "upload-zone loaded",
+        )
 
     # --- CREATE DATASET from designer + raw ---
     @app.callback(

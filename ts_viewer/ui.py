@@ -141,20 +141,36 @@ def dataset_picker(options: List[Dict], active: str):
                                 dbc.Col(
                                     dcc.Upload(
                                         id="upload-layout",
-                                        children=html.Div(["📄 Drag/Drop layout.csv or click"]),
+                                        children=html.Div(
+                                            [
+                                                html.Span("📄 layout.csv", className="upload-filename"),
+                                                html.Span(
+                                                    "Drag & drop or click to choose layout",
+                                                    className="upload-help",
+                                                ),
+                                            ]
+                                        ),
                                         multiple=False,
                                         accept=".csv",
-                                        className="border p-2 rounded text-center",
+                                        className="upload-zone",
                                     ),
                                     md=6,
                                 ),
                                 dbc.Col(
                                     dcc.Upload(
                                         id="upload-raw",
-                                        children=html.Div(["📈 Drag/Drop raw.csv or click"]),
+                                        children=html.Div(
+                                            [
+                                                html.Span("📈 raw.csv", className="upload-filename"),
+                                                html.Span(
+                                                    "Drag & drop or click to choose raw readings",
+                                                    className="upload-help",
+                                                ),
+                                            ]
+                                        ),
                                         multiple=False,
                                         accept=".csv",
-                                        className="border p-2 rounded text-center",
+                                        className="upload-zone",
                                     ),
                                     md=6,
                                 ),

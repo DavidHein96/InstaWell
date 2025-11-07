@@ -6,6 +6,7 @@ for representing experimental conditions and replicates.
 """
 
 from typing import List
+
 from pydantic import BaseModel, Field
 
 
@@ -18,6 +19,7 @@ class Replicate(BaseModel):
         well_column: The column identifier (e.g., '1', '2', '3')
         well_name: Combined well identifier (e.g., 'A1', 'B2')
     """
+
     well_row: str
     well_column: str
     well_name: str
@@ -48,6 +50,7 @@ class UniqueCondition(BaseModel):
         ...     buffer_condition="Buffer1",
         ... )
     """
+
     full_name: str = ""
     concentration: str = ""
     ligand_name: str = ""

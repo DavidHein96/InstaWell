@@ -1,12 +1,13 @@
 # ts_viewer/callbacks.py
 import math
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import dash_bootstrap_components as dbc
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Input, Output, State, dcc, no_update
+from dash import Input, Output, State, dcc, html, no_update
 from dash.dependencies import ALL
 from plotly.subplots import make_subplots
 
@@ -48,6 +49,18 @@ def _selected_reps_map(selected_keys: List[str], rep_values, rep_ids, ds: Datase
     for k in selected_keys:
         out.setdefault(k, ds.group_replicates.get(k, []))
     return out
+
+
+def _upload_display(icon: str, label: str, help_text: str, filename: Optional[str] = None):
+    name = Path(str(filename)).name if filename else label
+    main = f"{icon} {name}"
+    helper = "Loaded successfully" if filename else help_text
+    return html.Div(
+        [
+            html.Span(main, className="upload-filename"),
+            html.Span(helper, className="upload-help"),
+        ]
+    )
 
 
 # ---------- registration ----------
@@ -474,6 +487,52 @@ def register_callbacks(app):
         layout_url = "data:text/plain;charset=utf-8," + LAYOUT_TEMPLATE
         raw_url = "data:text/plain;charset=utf-8," + RAW_TEMPLATE
         return layout_url, raw_url
+
+    @app.callback(
+        Output("upload-layout", "children"),
+        Output("upload-layout", "className"),
+        Input("upload-layout", "filename"),
+        Input("upload-layout", "contents"),
+        prevent_initial_call=True,
+    )
+    def _layout_upload_feedback(filename, contents):
+        if contents:
+            return (
+                _upload_display(
+                    "📄",
+                    filename or "layout.csv",
+                    "Drag & drop or click to choose layout",
+                    filename or "layout.csv",
+                ),
+                "upload-zone loaded",
+            )
+        return (
+            _upload_display("📄", "layout.csv", "Drag & drop or click to choose layout"),
+            "upload-zone",
+        )
+
+    @app.callback(
+        Output("upload-raw", "children"),
+        Output("upload-raw", "className"),
+        Input("upload-raw", "filename"),
+        Input("upload-raw", "contents"),
+        prevent_initial_call=True,
+    )
+    def _raw_upload_feedback(filename, contents):
+        if contents:
+            return (
+                _upload_display(
+                    "📈",
+                    filename or "raw.csv",
+                    "Drag & drop or click to choose raw readings",
+                    filename or "raw.csv",
+                ),
+                "upload-zone loaded",
+            )
+        return (
+            _upload_display("📈", "raw.csv", "Drag & drop or click to choose raw readings"),
+            "upload-zone",
+        )
 
     # @app.callback(
     #     Output("dataset-select", "options"),

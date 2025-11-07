@@ -61,15 +61,24 @@ def main():
         is_valid = validate_condition_string(test)
         print(f"   '{test}' -> {is_valid}")
 
-    # Example 6: Parse concentration values
-    print("\n6. Parsing concentration values to floats:")
+    # Example 6: Custom field order
+    print("\n6. Using custom field order:")
+    custom_order_str = "ATP_Protein1_500uM_Buffer1"
+    custom_fields = ("ligand", "protein", "concentration", "buffer")
+    parsed_custom = parse_condition_string(custom_order_str, fields=custom_fields)
+    print(f"   Input:  {custom_order_str}")
+    print(f"   Fields: {custom_fields}")
+    print(f"   Output: {parsed_custom}")
+
+    # Example 7: Parse concentration values
+    print("\n7. Parsing concentration values to floats:")
     concentrations = ["500uM", "1mM", "0.5nM", "apo", "DMSO", "100uM"]
     for conc in concentrations:
         float_val = parse_concentration_to_float(conc)
         print(f"   '{conc}' -> {float_val}")
 
-    # Example 7: Error handling
-    print("\n7. Error handling:")
+    # Example 8: Error handling
+    print("\n8. Error handling:")
     try:
         invalid = "not_enough_fields"
         parsed = parse_condition_string(invalid)
