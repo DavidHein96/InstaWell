@@ -4,7 +4,7 @@
 
 # InstaWell
 
-![instawell — thermal shift tools](https://raw.githubusercontent.com/DavidHein96/InstaWell/main/docs/assets/instawell-icon-256.png)
+![instawell — thermal shift tools](https://raw.githubusercontent.com/DavidHein96/InstaWell/dev/docs/assets/instawell-icon-256.png)
 
 Tools for organizing, processing, and visualizing thermal shift assay (TSA) data.
 
