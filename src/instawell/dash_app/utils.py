@@ -73,17 +73,17 @@ def get_experiment_status(exp_dir: Path) -> Dict:
     """
     status = {"completed_steps": [], "total_conditions": 0}
 
-    # Check which pipeline steps are completed
-    if (exp_dir / StepFiles.INGESTED_DATA).exists():
+    # Check which pipeline steps are completed (using .value to get actual filenames)
+    if (exp_dir / StepFiles.INGESTED_DATA.value).exists():
         status["completed_steps"].append("ingest")
 
-    if (exp_dir / StepFiles.FILTERED_DATA).exists():
+    if (exp_dir / StepFiles.FILTERED_DATA.value).exists():
         status["completed_steps"].append("filter")
 
-    if (exp_dir / StepFiles.AVERAGED_DATA).exists():
+    if (exp_dir / StepFiles.AVERAGED_DATA.value).exists():
         status["completed_steps"].append("average")
 
-    if (exp_dir / StepFiles.MIN_TEMPERATURES_DATA).exists():
+    if (exp_dir / StepFiles.MIN_TEMPERATURES_DATA.value).exists():
         status["completed_steps"].append("complete")
 
     # Get number of unique conditions from experiment_info.json

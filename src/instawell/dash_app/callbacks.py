@@ -33,16 +33,112 @@ def register_callbacks(app):
     """Register all callbacks for the app."""
 
     @app.callback(
+        Output("current-experiment-banner", "children"),
+        Input("experiment-dropdown", "value"),
+    )
+    def show_experiment_banner(experiment_name):
+        """Show prominent banner when an experiment is loaded."""
+        if not experiment_name:
+            return html.Div()  # Empty if no experiment
+
+        return dbc.Alert(
+            [
+                html.I(className="fa fa-flask me-2"),
+                html.Strong("Currently Viewing: "),
+                html.Span(experiment_name, className="font-monospace"),
+                html.Span(" — ", className="mx-2"),
+                html.Small("Click 'Clear' above to create new experiments or layouts", className="text-muted"),
+            ],
+            color="info",
+            className="mb-3",
+        )
+
+    @app.callback(
+        Output("new-experiment-collapse", "is_open"),
+        Output("new-experiment-toggle-btn", "children"),
+        Output("new-experiment-toggle-btn", "color"),
+        Output("new-experiment-toggle-btn", "outline"),
+        Output("new-experiment-toggle-btn", "disabled"),
+        Output("designer-toggle-btn", "disabled"),
+        Output("designer-toggle-btn", "children", allow_duplicate=True),
+        Output("designer-collapse", "is_open", allow_duplicate=True),
+        Input("new-experiment-toggle-btn", "n_clicks"),
+        Input("experiment-dropdown", "value"),
+        State("new-experiment-collapse", "is_open"),
+        prevent_initial_call=True,
+    )
+    def toggle_new_experiment(n_clicks, selected_exp, is_open):
+        """Toggle new experiment card and disable when experiment is loaded."""
+        triggered = callback_context.triggered_id
+
+        # If an experiment is loaded, collapse and disable both buttons with helpful text
+        if selected_exp:
+            return (
+                False,  # collapse new experiment
+                "Clear loaded experiment to create new",
+                "secondary",
+                True,  # outlined
+                True,  # disable new experiment button
+                True,  # disable designer button
+                "Clear loaded experiment to use designer",
+                False,  # collapse designer too
+            )
+
+        # If no experiment loaded, allow toggling
+        if triggered == "new-experiment-toggle-btn" and n_clicks:
+            new_state = not is_open
+            if new_state:  # Opening
+                return (
+                    True,
+                    "Hide New Experiment",
+                    "secondary",
+                    True,
+                    False,  # enable button
+                    False,  # enable designer button
+                    "Show Designer",
+                    False,  # keep designer collapsed when opening new experiment
+                )
+            else:  # Closing
+                return (
+                    False,
+                    "Show New Experiment",
+                    "primary",
+                    False,
+                    False,  # enable button
+                    False,  # enable designer button
+                    "Show Designer",
+                    False,  # keep designer collapsed
+                )
+
+        # Default: no experiment loaded, no toggle click - keep new experiment open
+        # This happens when experiment is cleared
+        return (
+            True,  # open by default
+            "Hide New Experiment",
+            "secondary",
+            True,
+            False,  # enable button
+            False,  # enable designer button
+            "Show Designer",
+            False,  # designer collapsed by default
+        )
+
+    @app.callback(
         Output("experiment-dropdown", "options"),
         Output("experiment-dropdown", "value"),
         Input("refresh-experiments-btn", "n_clicks"),
         Input("pipeline-status", "children"),
+        Input("clear-experiment-btn", "n_clicks"),
         State("experiment-dropdown", "value"),
     )
-    def refresh_experiments(n_clicks, pipeline_status, current_value):
-        """Refresh the list of experiments."""
+    def refresh_experiments(n_refresh, pipeline_status, n_clear, current_value):
+        """Refresh the list of experiments or clear selection."""
         experiments = get_experiment_list(app.experiments_root)
         options = [{"label": name, "value": name} for name in experiments]
+
+        # If clear button was clicked, clear the selection
+        if callback_context.triggered_id == "clear-experiment-btn":
+            return options, None
 
         # If pipeline just completed successfully, select the new experiment
         if callback_context.triggered_id == "pipeline-status" and pipeline_status:
@@ -66,8 +162,9 @@ def register_callbacks(app):
     @app.callback(
         Output("experiment-info", "children"),
         Input("experiment-dropdown", "value"),
+        Input("pipeline-status", "children"),  # Add trigger to update when pipeline completes
     )
-    def update_experiment_info(experiment_name):
+    def update_experiment_info(experiment_name, pipeline_status):
         """Show info about selected experiment."""
         if not experiment_name:
             return ""
@@ -81,7 +178,7 @@ def register_callbacks(app):
         total_conditions = status.get("total_conditions", "?")
 
         if not completed_steps:
-            return html.Span("Not yet processed", className="text-warning")
+            return ""  # Show nothing if not yet processed
 
         step_icons = {
             "ingest": "fa-inbox",
@@ -349,7 +446,8 @@ def register_callbacks(app):
                 html.Div(
                     [
                         html.I(className="fa fa-check-circle me-2"),
-                        f"Setup complete! View raw data below and optionally filter wells before running the full pipeline.",
+                        html.Strong("Setup complete! "),
+                        "Review the raw data figures below, optionally filter problematic wells, then click 'Run Full Pipeline' to continue.",
                     ],
                     className="alert alert-success",
                 ),
@@ -387,6 +485,7 @@ def register_callbacks(app):
     @app.callback(
         Output("pipeline-status", "children"),
         Output("current-experiment-store", "data", allow_duplicate=True),
+        Output("well-filter-card", "style", allow_duplicate=True),
         Input("run-pipeline-btn", "n_clicks"),
         State("current-experiment-store", "data"),
         State("filtered-wells-store", "data"),
@@ -404,6 +503,7 @@ def register_callbacks(app):
                     className="alert alert-warning",
                 ),
                 None,
+                {"display": "block"},  # keep filter card visible
             )
 
         try:
@@ -442,6 +542,7 @@ def register_callbacks(app):
                     className="alert alert-success",
                 ),
                 exp_name,
+                {"display": "none"},  # hide well filter card after pipeline runs
             )
 
         except Exception as e:
@@ -466,10 +567,16 @@ def register_callbacks(app):
                     ],
                 ),
                 None,
+                {"display": "block"},  # keep filter card visible if pipeline failed
             )
 
     @app.callback(
         Output("figures-container", "children"),
+        Output("fig-btn-averaged", "style"),
+        Output("fig-btn-bgsub", "style"),
+        Output("fig-btn-minmax", "style"),
+        Output("fig-btn-deriv", "style"),
+        Output("fig-btn-tm", "style"),
         Input("experiment-dropdown", "value"),
         Input("current-experiment-store", "data"),
         Input("setup-complete-store", "data"),
@@ -497,24 +604,29 @@ def register_callbacks(app):
         experiment_name = new_exp if new_exp else selected_exp
 
         if not experiment_name:
-            return html.Div(
-                [
-                    html.I(className="fa fa-info-circle fa-3x text-muted mb-3"),
-                    html.P(
-                        "Select an experiment or upload data to view figures",
-                        className="text-muted",
-                    ),
-                ],
-                className="text-center py-5",
+            return (
+                html.Div(
+                    [
+                        html.I(className="fa fa-info-circle fa-3x text-muted mb-3"),
+                        html.P(
+                            "Select an experiment or upload data to view figures",
+                            className="text-muted",
+                        ),
+                    ],
+                    className="text-center py-5",
+                ),
+                {"display": "none"},  # hide averaged
+                {"display": "none"},  # hide bgsub
+                {"display": "none"},  # hide minmax
+                {"display": "none"},  # hide deriv
+                {"display": "none"},  # hide tm
             )
 
         # Determine which figure type to show
         triggered = callback_context.triggered_id
 
-        # Default to raw when setup just completed, otherwise averaged
-        if triggered == "setup-complete-store" and setup_complete:
-            figure_type = "raw"
-        elif triggered == "fig-btn-raw":
+        # Determine figure type based on button clicks
+        if triggered == "fig-btn-raw":
             figure_type = "raw"
         elif triggered == "fig-btn-averaged":
             figure_type = "averaged"
@@ -527,7 +639,8 @@ def register_callbacks(app):
         elif triggered == "fig-btn-tm":
             figure_type = "tm"
         else:
-            figure_type = "averaged"  # default
+            # Smart default: show raw if only raw data exists, otherwise averaged
+            figure_type = "raw"  # always default to raw for safety
 
         try:
             # Load experiment context
@@ -535,7 +648,22 @@ def register_callbacks(app):
                 experiment_name, experiments_root=str(app.experiments_root)
             )
 
-            # Check which data files exist
+            # Check which data files exist to determine button visibility
+            has_raw = (ctx.experiment_dir / StepFiles.INGESTED_DATA.value).exists()
+            has_averaged = (ctx.experiment_dir / StepFiles.AVERAGED_DATA.value).exists()
+            has_bgsub = (ctx.experiment_dir / StepFiles.BG_SUB_DATA.value).exists()
+            has_minmax = (ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA.value).exists()
+            has_deriv = (ctx.experiment_dir / StepFiles.DERIVATIVE_DATA.value).exists()
+            has_tm = (ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA.value).exists()
+
+            # Determine which buttons to show
+            show_averaged = {"display": "inline-block"} if has_averaged else {"display": "none"}
+            show_bgsub = {"display": "inline-block"} if has_bgsub else {"display": "none"}
+            show_minmax = {"display": "inline-block"} if has_minmax else {"display": "none"}
+            show_deriv = {"display": "inline-block"} if has_deriv else {"display": "none"}
+            show_tm = {"display": "inline-block"} if has_tm else {"display": "none"}
+
+            # Check which data files exist for the selected figure type
             required_files = {
                 "raw": StepFiles.INGESTED_DATA.value,
                 "averaged": StepFiles.AVERAGED_DATA.value,
@@ -546,19 +674,26 @@ def register_callbacks(app):
             }
 
             if not (ctx.experiment_dir / required_files[figure_type]).exists():
-                return html.Div(
-                    [
-                        html.I(className="fa fa-exclamation-triangle fa-2x text-warning mb-3"),
-                        html.P(
-                            f"Pipeline step '{figure_type}' not yet completed for this experiment",
-                            className="text-muted",
-                        ),
-                        html.P(
-                            "Run the full pipeline to generate all figures",
-                            className="small text-muted",
-                        ),
-                    ],
-                    className="text-center py-5",
+                return (
+                    html.Div(
+                        [
+                            html.I(className="fa fa-exclamation-triangle fa-2x text-warning mb-3"),
+                            html.P(
+                                f"Pipeline step '{figure_type}' not yet completed for this experiment",
+                                className="text-muted",
+                            ),
+                            html.P(
+                                "Run the full pipeline to generate all figures",
+                                className="small text-muted",
+                            ),
+                        ],
+                        className="text-center py-5",
+                    ),
+                    show_averaged,
+                    show_bgsub,
+                    show_minmax,
+                    show_deriv,
+                    show_tm,
                 )
 
             # Generate figures using tested generators
@@ -578,12 +713,19 @@ def register_callbacks(app):
                 figures = []
 
             if not figures:
-                return html.Div(
-                    [
-                        html.I(className="fa fa-chart-line fa-2x text-muted mb-3"),
-                        html.P("No figures generated", className="text-muted"),
-                    ],
-                    className="text-center py-5",
+                return (
+                    html.Div(
+                        [
+                            html.I(className="fa fa-chart-line fa-2x text-muted mb-3"),
+                            html.P("No figures generated", className="text-muted"),
+                        ],
+                        className="text-center py-5",
+                    ),
+                    show_averaged,
+                    show_bgsub,
+                    show_minmax,
+                    show_deriv,
+                    show_tm,
                 )
 
             # Display all figures
@@ -598,13 +740,27 @@ def register_callbacks(app):
                     )
                 )
 
-            return html.Div(figure_components)
+            return (
+                html.Div(figure_components),
+                show_averaged,
+                show_bgsub,
+                show_minmax,
+                show_deriv,
+                show_tm,
+            )
 
         except Exception as e:
-            return html.Div(
-                [
-                    html.I(className="fa fa-exclamation-triangle fa-2x text-danger mb-3"),
-                    html.P(f"Error loading figures: {e!s}", className="text-danger"),
-                ],
-                className="text-center py-5",
+            return (
+                html.Div(
+                    [
+                        html.I(className="fa fa-exclamation-triangle fa-2x text-danger mb-3"),
+                        html.P(f"Error loading figures: {e!s}", className="text-danger"),
+                    ],
+                    className="text-center py-5",
+                ),
+                {"display": "none"},  # hide averaged
+                {"display": "none"},  # hide bgsub
+                {"display": "none"},  # hide minmax
+                {"display": "none"},  # hide deriv
+                {"display": "none"},  # hide tm
             )

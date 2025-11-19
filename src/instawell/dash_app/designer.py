@@ -95,27 +95,61 @@ def create_plate_grid(
     rows, cols = PLATE_TYPES.get(plate_type, PLATE_TYPES["96"])
     row_labels = get_row_labels(rows)
 
-    # Create table data
+    # Create table data and tooltips
     data = []
+    tooltip_data = []
     for row_label in row_labels:
         row_data = {"Well": row_label}
+        tooltip_row = {"Well": row_label}
         for col_num in range(1, cols + 1):
             well_name = f"{row_label}{col_num}"
+            col_id = str(col_num)
             if well_name in cells:
                 cond = cells[well_name]
-                # Format: "10uM ATP Protein1"
-                text = f"{cond.get('concentration', '')}{cond.get('unit', '')} {cond.get('ligand', '')} {cond.get('protein', '')}"
-                row_data[str(col_num)] = text.strip()
+                # Display: show only concentration
+                display_text = f"{cond.get('concentration', '')}{cond.get('unit', '')}"
+                row_data[col_id] = display_text.strip()
+
+                # Tooltip: show full details
+                tooltip_text = (
+                    f"Concentration: {cond.get('concentration', '')}{cond.get('unit', '')}\n"
+                    f"Ligand: {cond.get('ligand', '')}\n"
+                    f"Protein: {cond.get('protein', '')}\n"
+                    f"Buffer: {cond.get('buffer', '')}"
+                )
+                tooltip_row[col_id] = tooltip_text
             else:
-                row_data[str(col_num)] = ""
+                row_data[col_id] = ""
+                tooltip_row[col_id] = ""
         data.append(row_data)
+        tooltip_data.append(tooltip_row)
 
     # Column definitions
     columns = [{"name": "Well", "id": "Well"}]
     columns += [{"name": str(i), "id": str(i)} for i in range(1, cols + 1)]
 
-    # Styling for available wells (if raw data provided)
+    # Styling for available wells (if raw data provided) and filled cells
     style_data_conditional = []
+
+    # Style for filled cells (has condition assigned)
+    for row_idx, row_label in enumerate(row_labels):
+        for col_num in range(1, cols + 1):
+            well_name = f"{row_label}{col_num}"
+            col_id = str(col_num)
+            if well_name in cells:
+                style_data_conditional.append(
+                    {
+                        "if": {
+                            "filter_query": f'{{Well}} = "{row_label}"',
+                            "column_id": col_id,
+                        },
+                        "backgroundColor": "rgba(40, 167, 69, 0.15)",  # Light green for filled
+                        "border": "1px solid rgba(40, 167, 69, 0.4)",
+                        "fontWeight": "bold",
+                    }
+                )
+
+    # Style for available wells (if raw data provided) - only if not already filled
     if available_wells:
         for well in available_wells:
             match = WELL_PATTERN.match(well)
@@ -124,7 +158,7 @@ def create_plate_grid(
             row_label = match.group(1).upper()
             col_id = str(int(match.group(2)))
 
-            if row_label in row_labels:
+            if row_label in row_labels and f"{row_label}{col_id}" not in cells:
                 style_data_conditional.append(
                     {
                         "if": {
@@ -141,6 +175,8 @@ def create_plate_grid(
         id="designer-plate-grid",
         data=data,
         columns=columns,
+        tooltip_data=tooltip_data,
+        tooltip_duration=None,  # Tooltip stays until mouse leaves
         selected_cells=[],
         cell_selectable=True,
         editable=False,
@@ -174,6 +210,10 @@ def create_plate_grid(
                 "selector": ".dash-spreadsheet td.cell--selected",
                 "rule": "background-color: rgba(13, 110, 253, 0.25) !important;",
             },
+            {
+                "selector": ".dash-table-tooltip",
+                "rule": "background-color: rgba(0, 0, 0, 0.9) !important; color: white; font-size: 12px; padding: 8px; border-radius: 4px;",
+            },
         ],
     )
 
@@ -181,7 +221,7 @@ def create_plate_grid(
         [
             table,
             html.Small(
-                "Click and drag to select wells, then assign conditions below",
+                "Click and drag to select wells, then assign conditions below. Hover over filled wells to see full details.",
                 className="text-muted mt-2 d-block",
             ),
         ]
@@ -204,11 +244,11 @@ def designer_card():
                         ),
                         dbc.Col(
                             dbc.Button(
-                                "Hide Designer",
+                                "Show Designer",
                                 id="designer-toggle-btn",
-                                color="secondary",
+                                color="primary",
                                 size="sm",
-                                outline=True,
+                                outline=False,
                             ),
                             className="text-end",
                         ),
@@ -291,7 +331,29 @@ def designer_card():
                         # Condition assignment form
                         html.Div(
                             [
-                                html.H6("Assign Condition to Selected Wells"),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            html.H6("Assign Condition to Selected Wells"),
+                                            width="auto",
+                                        ),
+                                        dbc.Col(
+                                            dbc.Button(
+                                                [
+                                                    html.I(className="fa fa-copy me-2"),
+                                                    "Copy from Selected Well",
+                                                ],
+                                                id="designer-copy-btn",
+                                                color="info",
+                                                size="sm",
+                                                outline=True,
+                                                disabled=True,
+                                            ),
+                                            className="text-end",
+                                        ),
+                                    ],
+                                    className="mb-2",
+                                ),
                                 html.Div(
                                     id="designer-selected-wells-display",
                                     className="mb-2 small text-muted",
@@ -306,7 +368,7 @@ def designer_card():
                                                         dbc.Input(
                                                             id="designer-concentration",
                                                             type="number",
-                                                            placeholder="10",
+                                                            placeholder="e.g. 10",
                                                         ),
                                                         dbc.Select(
                                                             id="designer-unit",
@@ -329,7 +391,7 @@ def designer_card():
                                                 html.Label("Ligand"),
                                                 dbc.Input(
                                                     id="designer-ligand",
-                                                    placeholder="ATP",
+                                                    placeholder="e.g. ATP",
                                                 ),
                                             ],
                                             width=12,
@@ -341,7 +403,7 @@ def designer_card():
                                                 html.Label("Protein"),
                                                 dbc.Input(
                                                     id="designer-protein",
-                                                    placeholder="Protein1 or NPC",
+                                                    placeholder="e.g. Protein1 or NPC",
                                                 ),
                                             ],
                                             width=12,
@@ -353,7 +415,7 @@ def designer_card():
                                                 html.Label("Buffer"),
                                                 dbc.Input(
                                                     id="designer-buffer",
-                                                    placeholder="Buffer1",
+                                                    placeholder="e.g. Buffer1",
                                                 ),
                                             ],
                                             width=12,

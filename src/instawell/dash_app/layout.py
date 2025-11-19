@@ -72,10 +72,22 @@ def experiment_browser_card():
                                         placeholder="Select an experiment to view...",
                                         className="mb-2",
                                     ),
-                                    dbc.Button(
-                                        [html.I(className="fa fa-sync me-2"), "Refresh"],
-                                        id="refresh-experiments-btn",
-                                        color="secondary",
+                                    dbc.ButtonGroup(
+                                        [
+                                            dbc.Button(
+                                                [html.I(className="fa fa-sync me-2"), "Refresh"],
+                                                id="refresh-experiments-btn",
+                                                color="secondary",
+                                                size="sm",
+                                            ),
+                                            dbc.Button(
+                                                [html.I(className="fa fa-times me-2"), "Clear"],
+                                                id="clear-experiment-btn",
+                                                color="warning",
+                                                size="sm",
+                                                outline=False,
+                                            ),
+                                        ],
                                         size="sm",
                                     ),
                                 ],
@@ -165,12 +177,31 @@ def upload_pipeline_card():
     return dbc.Card(
         [
             dbc.CardHeader(
-                html.H5(
-                    [html.I(className="fa fa-upload me-2"), "New Experiment"],
-                    className="mb-0",
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            html.H5(
+                                [html.I(className="fa fa-upload me-2"), "New Experiment"],
+                                className="mb-0",
+                            ),
+                            width="auto",
+                        ),
+                        dbc.Col(
+                            dbc.Button(
+                                "Hide New Experiment",
+                                id="new-experiment-toggle-btn",
+                                color="secondary",
+                                size="sm",
+                                outline=True,
+                            ),
+                            className="text-end",
+                        ),
+                    ],
+                    align="center",
                 )
             ),
-            dbc.CardBody(
+            dbc.Collapse(
+                dbc.CardBody(
                 [
                     # Upload section
                     dbc.Row(
@@ -338,6 +369,9 @@ def upload_pipeline_card():
                         ]
                     ),
                 ]
+                ),
+                id="new-experiment-collapse",
+                is_open=True,
             ),
         ],
         className="mb-4",
@@ -453,6 +487,8 @@ def create_layout():
             dcc.Store(id="setup-complete-store", data=False),  # Track if setup/ingest done
             # UI components
             navbar(),
+            # Currently viewing banner (shows when experiment is loaded)
+            html.Div(id="current-experiment-banner"),
             experiment_browser_card(),
             designer_card(),  # Layout designer
             upload_pipeline_card(),

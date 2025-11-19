@@ -26,6 +26,8 @@ def register_designer_callbacks(app):
     @app.callback(
         Output("designer-collapse", "is_open"),
         Output("designer-toggle-btn", "children"),
+        Output("designer-toggle-btn", "color"),
+        Output("designer-toggle-btn", "outline"),
         Input("designer-toggle-btn", "n_clicks"),
         State("designer-collapse", "is_open"),
         prevent_initial_call=True,
@@ -36,8 +38,17 @@ def register_designer_callbacks(app):
             raise PreventUpdate
 
         new_state = not is_open
-        button_text = "Hide Designer" if new_state else "Show Designer"
-        return new_state, button_text
+
+        if new_state:  # Opening designer
+            button_text = "Hide Designer"
+            button_color = "secondary"
+            button_outline = True
+        else:  # Closing designer
+            button_text = "Show Designer"
+            button_color = "primary"
+            button_outline = False
+
+        return new_state, button_text, button_color, button_outline
 
     @app.callback(
         Output("designer-state", "data", allow_duplicate=True),
@@ -129,12 +140,14 @@ def register_designer_callbacks(app):
         Output("designer-selected-wells-display", "children"),
         Output("designer-assign-btn", "disabled"),
         Output("designer-clear-btn", "disabled"),
+        Output("designer-copy-btn", "disabled"),
         Input("designer-selected-wells", "data"),
+        State("designer-state", "data"),
     )
-    def update_selection_display(selected_wells):
+    def update_selection_display(selected_wells, state):
         """Display selected wells and enable/disable buttons."""
         if not selected_wells:
-            return "No wells selected", True, True
+            return "No wells selected", True, True, True
 
         wells_str = ", ".join(selected_wells)
         display = html.Span(
@@ -143,14 +156,50 @@ def register_designer_callbacks(app):
                 html.Span(wells_str, className="font-monospace"),
             ]
         )
-        return display, False, False
+
+        # Enable copy button only if exactly one filled well is selected
+        cells = state.get("cells", {})
+        copy_enabled = len(selected_wells) == 1 and selected_wells[0] in cells
+
+        return display, False, False, not copy_enabled
 
     @app.callback(
-        Output("designer-state", "data", allow_duplicate=True),
         Output("designer-concentration", "value"),
+        Output("designer-unit", "value"),
         Output("designer-ligand", "value"),
         Output("designer-protein", "value"),
         Output("designer-buffer", "value"),
+        Input("designer-copy-btn", "n_clicks"),
+        State("designer-selected-wells", "data"),
+        State("designer-state", "data"),
+        prevent_initial_call=True,
+    )
+    def copy_condition_to_form(n_clicks, selected_wells, state):
+        """Copy condition from selected well to form fields."""
+        if not n_clicks or not selected_wells or len(selected_wells) != 1:
+            raise PreventUpdate
+
+        well = selected_wells[0]
+        cells = state.get("cells", {})
+
+        if well not in cells:
+            raise PreventUpdate
+
+        cond = cells[well]
+        return (
+            cond.get("concentration"),
+            cond.get("unit", "uM"),
+            cond.get("ligand", ""),
+            cond.get("protein", ""),
+            cond.get("buffer", ""),
+        )
+
+    @app.callback(
+        Output("designer-state", "data", allow_duplicate=True),
+        Output("designer-concentration", "value", allow_duplicate=True),
+        Output("designer-ligand", "value", allow_duplicate=True),
+        Output("designer-protein", "value", allow_duplicate=True),
+        Output("designer-buffer", "value", allow_duplicate=True),
         Input("designer-assign-btn", "n_clicks"),
         State("designer-selected-wells", "data"),
         State("designer-concentration", "value"),
