@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "instawell"
-version = "0.1.0.dev1"
+version = "0.3.0.dev3"
 description = "Nice tools for plotting and analyzing thermal shift assay wells"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,13 +18,11 @@ classifiers = [
 ]
 
 dependencies = [
-    "click>=8.1,<9.0",
     "numpy>=1.26,<3.0",
     "pandas>=2.0,<3.0",
-    "pip>=25.2",
     "plotly[express] >=5.18,<7.0",
     "pydantic>=2.7,<3.0",
-    "scipy>=1.15.3",
+    "scipy>=1.9.0,<2.0",
 ]
 
 [project.scripts]
@@ -32,7 +30,7 @@ instawell = "instawell.cli:main"
 instawell-dash = "instawell.dash_app.app:main"
 
 [project.optional-dependencies]
-
+notebook = ["ipywidgets>=7.6.0,<9.0", "notebook>=6.4.0,<8.0"]
 dev = [
     "bandit>=1.8.6",
     "datamodel-code-generator[http]>=0.32.0",
@@ -42,7 +40,6 @@ dev = [
     "ruff>=0.12.8",
     "types-requests>=2.32.4.20250809",
 ]
-
 test = ["pytest>=8.4.1"]
 notebooks = ["jupyter>=1.1.1"]
 build = ["hatchling>=1.27.0", "twine>=6.1.0"]

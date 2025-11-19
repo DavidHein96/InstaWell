@@ -25,7 +25,7 @@ Pipeline Steps (in order):
     1. setup_experiment() - Initialize experiment directory and context
     2. ingest_data() - Parse layout and organize raw data
     3. filter_wells() - Remove problematic wells
-    4. average_accross_replicates() - Average technical replicates
+    4. average_across_replicates() - Average technical replicates
     5. subtract_background() - Remove background signal (NPC controls)
     6. min_max_scale() - Normalize to 0-1 range
     7. calculate_derivative() - Compute -dY/dT for Tm identification
@@ -61,7 +61,7 @@ from .processing.step_00_setup_experiment import (
 )
 from .processing.step_01_ingest_data import ingest_data
 from .processing.step_02_filter_wells import filter_wells
-from .processing.step_03_average_replicates import average_accross_replicates
+from .processing.step_03_average_replicates import average_across_replicates
 from .processing.step_04_subtract_background import subtract_background
 from .processing.step_05_minmax_scale import min_max_scale
 from .processing.step_06_calc_derivative import calculate_derivative
@@ -76,7 +76,7 @@ __all__ = [
     # ===== Data Processing Steps =====
     "ingest_data",
     "filter_wells",
-    "average_accross_replicates",
+    "average_across_replicates",
     "subtract_background",
     "min_max_scale",
     "calculate_derivative",

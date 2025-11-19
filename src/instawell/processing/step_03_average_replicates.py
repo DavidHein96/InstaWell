@@ -40,7 +40,7 @@ def _avg_across_replicates(
     return averaged_data_pivot, averaged_data_long
 
 
-def average_accross_replicates(ctx: ExperimentContext) -> None:
+def average_across_replicates(ctx: ExperimentContext) -> None:
     """
     Averages the data across replicates.
 

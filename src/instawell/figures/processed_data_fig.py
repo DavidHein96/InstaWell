@@ -22,16 +22,16 @@ DataSourceName: TypeAlias = Literal[
 
 # Map the public string API → internal StepFiles enum
 _DATA_SOURCE_TO_STEPFILE: dict[DataSourceName, StepFiles] = {
-    "averaged_data": StepFiles.AVERAGED_DATA,
-    "bg_subtracted_data": StepFiles.BG_SUB_DATA,
-    "min_max_scaled_data": StepFiles.MIN_MAX_SCALED_DATA,
-    "derivative_data": StepFiles.DERIVATIVE_DATA,
+    "averaged_data": StepFiles.AVERAGED_DATA_LONG,
+    "bg_subtracted_data": StepFiles.BG_SUB_DATA_LONG,
+    "min_max_scaled_data": StepFiles.MIN_MAX_SCALED_DATA_LONG,
+    "derivative_data": StepFiles.DERIVATIVE_DATA_LONG,
 }
 _DATA_SOURCE_TO_PLOT_DIR: dict[DataSourceName, StepFiles] = {
-    "averaged_data": StepFiles.AVERAGED_DATA,
-    "bg_subtracted_data": StepFiles.BG_SUB_DATA,
-    "min_max_scaled_data": StepFiles.MIN_MAX_SCALED_DATA,
-    "derivative_data": StepFiles.DERIVATIVE_DATA,
+    "averaged_data": StepFiles.AVERAGED_PLOTS,
+    "bg_subtracted_data": StepFiles.BG_SUB_PLOTS,
+    "min_max_scaled_data": StepFiles.MIN_MAX_SCALED_PLOTS,
+    "derivative_data": StepFiles.DERIVATIVE_PLOTS,
 }
 
 
