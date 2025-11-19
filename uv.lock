@@ -978,13 +978,12 @@ wheels = [
 
 [[package]]
 name = "instawell"
-version = "0.2.0.dev1"
+version = "0.3.0.dev3"
 source = { editable = "." }
 dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pandas" },
-    { name = "pip" },
     { name = "plotly", extra = ["express"] },
     { name = "pydantic" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -1008,6 +1007,10 @@ dev = [
     { name = "pre-commit" },
     { name = "ruff" },
     { name = "types-requests" },
+]
+notebook = [
+    { name = "ipywidgets" },
+    { name = "notebook" },
 ]
 notebooks = [
     { name = "jupyter" },
@@ -1033,11 +1036,12 @@ requires-dist = [
     { name = "dash-bootstrap-components", marker = "extra == 'dash'", specifier = ">=1.5.0" },
     { name = "datamodel-code-generator", extras = ["http"], marker = "extra == 'dev'", specifier = ">=0.32.0" },
     { name = "hatchling", marker = "extra == 'build'", specifier = ">=1.27.0" },
+    { name = "ipywidgets", marker = "extra == 'notebook'", specifier = ">=7.6.0,<9.0" },
     { name = "jupyter", marker = "extra == 'notebooks'", specifier = ">=1.1.1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.17.1" },
+    { name = "notebook", marker = "extra == 'notebook'", specifier = ">=6.4.0,<8.0" },
     { name = "numpy", specifier = ">=1.26,<3.0" },
     { name = "pandas", specifier = ">=2.0,<3.0" },
-    { name = "pip", specifier = ">=25.2" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.9.0" },
     { name = "plotly", extras = ["express"], specifier = ">=5.18,<7.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.3.0" },
@@ -1046,11 +1050,11 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'testing'", specifier = ">=8.4.2" },
     { name = "pytest-cov", marker = "extra == 'testing'", specifier = ">=7.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12.8" },
-    { name = "scipy", specifier = ">=1.15.3" },
+    { name = "scipy", specifier = ">=1.9.0,<2.0" },
     { name = "twine", marker = "extra == 'build'", specifier = ">=6.1.0" },
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.32.4.20250809" },
 ]
-provides-extras = ["dev", "test", "notebooks", "build", "dash", "testing"]
+provides-extras = ["notebook", "dev", "test", "notebooks", "build", "dash", "testing"]
 
 [package.metadata.requires-dev]
 test = [

@@ -76,5 +76,13 @@ def calculate_derivative(ctx: ExperimentContext) -> None:
         value_name="value",
     )
     derivative_long_path = ctx.experiment_dir / StepFiles.DERIVATIVE_DATA_LONG.value
+    # take the columns from the bg subtracted long data, unqcond, and the condition fields
+    # and merge them into the derivative long data
+    bg_sub_long_path = ctx.experiment_dir / StepFiles.BG_SUB_DATA_LONG.value
+    bg_sub_long_data = pd.read_csv(bg_sub_long_path)
+    merge_cols = ["unqcond", *ctx.condition_fields]
+    long_data = long_data.merge(
+        bg_sub_long_data[merge_cols].drop_duplicates(), on="unqcond", how="left"
+    )
     long_data.to_csv(derivative_long_path, index=False)
     logger.info("Derivative long data saved to %s", derivative_long_path)

@@ -304,21 +304,33 @@ def upload_pipeline_card():
                             ),
                         ]
                     ),
-                    # Run pipeline button
+                    # Buttons for two-stage workflow
                     dbc.Row(
                         [
                             dbc.Col(
                                 [
                                     dbc.Button(
                                         [
+                                            html.I(className="fa fa-cog me-2"),
+                                            "Setup & View Raw Data",
+                                        ],
+                                        id="setup-ingest-btn",
+                                        color="info",
+                                        size="lg",
+                                        disabled=True,
+                                        className="me-2",
+                                    ),
+                                    dbc.Button(
+                                        [
                                             html.I(className="fa fa-play me-2"),
-                                            "Run Pipeline",
+                                            "Run Full Pipeline",
                                         ],
                                         id="run-pipeline-btn",
                                         color="primary",
                                         size="lg",
                                         disabled=True,
                                     ),
+                                    html.Div(id="setup-status", className="mt-2"),
                                     html.Div(id="pipeline-status", className="mt-2"),
                                 ],
                                 width=12,
@@ -438,6 +450,7 @@ def create_layout():
             dcc.Store(id="layout-data-store"),
             dcc.Store(id="current-experiment-store"),
             dcc.Store(id="filtered-wells-store", data=[]),  # Store filtered wells
+            dcc.Store(id="setup-complete-store", data=False),  # Track if setup/ingest done
             # UI components
             navbar(),
             experiment_browser_card(),
