@@ -2,6 +2,23 @@
 import logging
 from logging import FileHandler, Formatter
 from pathlib import Path
+from typing import Callable, Optional
+
+
+class MaxLevelFilter(logging.Filter):
+    """
+    Only allow records up to max_level (inclusive).
+
+    Example:
+        MaxLevelFilter(logging.INFO) -> filters out WARNING, ERROR, CRITICAL.
+    """
+
+    def __init__(self, max_level: int) -> None:
+        super().__init__()
+        self.max_level = max_level
+
+    def filter(self, record: logging.LogRecord) -> bool:  # type: ignore[override]
+        return record.levelno <= self.max_level
 
 
 def setup_experiment_logging(
@@ -26,7 +43,8 @@ def setup_experiment_logging(
 
     fh = FileHandler(log_path, encoding="utf-8")
     fh.setLevel(level)
-    fh.setFormatter(Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    fh.addFilter(MaxLevelFilter(logging.INFO))
+    fh.setFormatter(Formatter("%(asctime)s %(name)s: %(message)s"))
     pkg_logger.addHandler(fh)
 
     pkg_logger.propagate = True
@@ -74,7 +92,31 @@ def ensure_experiment_context(
     if log_to_file:
         setup_experiment_logging(experiment_dir=experiment_dir, level=log_level)
 
-    # check if any .csv files exist in the experiment directory
-    csv_files = list(experiment_dir.glob("*.csv"))
-
     return experiment_dir
+
+
+def normalize_log_level(level: int | str) -> int:
+    if isinstance(level, int):
+        return level
+
+    name = str(level).strip().upper()
+
+    # 3.11+: try the mapping if present (no Pylance error)
+    get_map: Optional[Callable[[], dict[str, int]]] = getattr(logging, "getLevelNamesMapping", None)
+    if get_map is not None:
+        mapping = get_map()
+        if name in mapping:
+            return mapping[name]
+
+    # Fallback for 3.10 and earlier
+    num = logging.getLevelName(name)
+    if isinstance(num, int):
+        return num
+
+    # allow numeric strings like "20"
+    try:
+        return int(level)
+    except ValueError:
+        pass
+
+    raise ValueError(f"Invalid log level: {level!r}")

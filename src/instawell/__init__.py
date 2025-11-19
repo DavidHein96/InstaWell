@@ -1,8 +1,10 @@
 """
-InstaWell: A powerful toolkit for analyzing Differential Scanning Fluorimetry (DSF) data.
+InstaWell: A powerful toolkit for analyzing Thermal Shift Assay data
 
 This package provides a complete pipeline for processing thermal shift assay experiments,
-from raw data ingestion through melting temperature identification.
+from raw data ingestion through melting temperature identification. It is designed to be
+highly friendly for Jupyter Notebook users, with interactive figure widgets and easy-to-use
+functions.
 
 Basic Usage:
     >>> from instawell import setup_experiment, ingest_data, filter_wells
@@ -28,36 +30,31 @@ Pipeline Steps (in order):
     6. min_max_scale() - Normalize to 0-1 range
     7. calculate_derivative() - Compute -dY/dT for Tm identification
     8. find_min_temperature() - Extract melting temperatures
+    9. calculate_curve_params() - Fit dose-response curves to Tm data
+
+Figures:
+    - The figures are set up to work really well in Jupyter Notebooks.
+    - The base generators return iterators of Plotly figures for easy display or saving.
+        - raw_figure_generator() - Visualize raw data for each well
+        - processed_figure_generator() - Visualize processed data at each step (groups replicates)
+        - min_temp_figure_generator() - Visualize melting temperatures across conditions and show 4PL fits
+    - When working in notebooks, use the widget helpers to get interactive figure browsers.
+        - raw_figures_widget() - Interactive browser for raw data figures
+        - processed_figures_widget() - Interactive browser for processed data figures
+        - min_temp_figures_widget() - Interactive browser for melting temperature figures
 """
 
 import logging
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-# Core context and configuration
-# Data models
-from .core.data_models import Replicate, UniqueCondition
 from .core.exp_context import ExperimentContext
-
-# Parsing utilities
-from .core.parser import (
-    condition_from_string,
-    condition_to_string,
-    parse_concentration_to_float,
-    parse_condition_string,
-    validate_condition_string,
-)
 from .core.steps import StepFiles
-
-# Figures
-from .figures.fig_01_raw import raw_figure_generator
-from .figures.fig_02_averaged import averaged_figure_generator
-from .figures.fig_03_bgsub_raw import bgsub_figure_generator
-from .figures.fig_04_bgsub_minmax import bgsub_minmax_figure_generator
-from .figures.fig_05_derivative import derivative_figure_generator
-from .figures.fig_06_min_temp import min_temp_figure_generator
-
-# Processing pipeline steps
+from .figures.notebook_helpers import (
+    min_temp_figures_widget,
+    processed_figures_widget,
+    raw_figures_widget,
+)
 from .processing.step_00_setup_experiment import (
     load_experiment_context,
     setup_experiment,
@@ -69,17 +66,14 @@ from .processing.step_04_subtract_background import subtract_background
 from .processing.step_05_minmax_scale import min_max_scale
 from .processing.step_06_calc_derivative import calculate_derivative
 from .processing.step_07_find_min_temp import find_min_temperature
-
-# Utility functions
-from .utils.utils import split_unqcon_column
+from .processing.step_08_calc_curves import calculate_curve_params
 
 __all__ = [
     # ===== Experiment Setup =====
+    "ExperimentContext",
     "setup_experiment",
     "load_experiment_context",
-    "ExperimentContext",
-    "StepFiles",
-    # ===== Processing Pipeline =====
+    # ===== Data Processing Steps =====
     "ingest_data",
     "filter_wells",
     "average_accross_replicates",
@@ -87,24 +81,10 @@ __all__ = [
     "min_max_scale",
     "calculate_derivative",
     "find_min_temperature",
-    # ===== Data Models =====
-    "Replicate",
-    "UniqueCondition",
-    # ===== Parsing Utilities =====
-    "condition_from_string",
-    "condition_to_string",
-    "parse_condition_string",
-    "parse_concentration_to_float",
-    "validate_condition_string",
-    # ===== Utilities =====
-    "split_unqcon_column",
-    # ===== Figure Generators =====
-    "raw_figure_generator",
-    "averaged_figure_generator",
-    "bgsub_figure_generator",
-    "bgsub_minmax_figure_generator",
-    "derivative_figure_generator",
-    "min_temp_figure_generator",
+    "calculate_curve_params",
+    # ===== Figure Widgets =====
+    "raw_figures_widget",
+    "processed_figures_widget",
+    "min_temp_figures_widget",
+    "StepFiles",
 ]
-
-__version__ = "0.2.0"  # Bumped for new API

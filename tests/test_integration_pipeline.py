@@ -30,13 +30,13 @@ RAW_DATA_PATH = TEST_DATA_DIR / "TSA_042_Raw_RFU.csv"
 LAYOUT_PATH = TEST_DATA_DIR / "TSA_042_Plate_Layout.csv"
 
 # Expected output paths (golden files)
-EXPECTED_RAW_ORGANIZED = TEST_DATA_DIR / "raw_organized_data.csv"
-EXPECTED_FILTERED = TEST_DATA_DIR / "filtered_organized_data.csv"
-EXPECTED_AVERAGED = TEST_DATA_DIR / "averaged_data.csv"
-EXPECTED_BG_SUBTRACTED = TEST_DATA_DIR / "background_subtracted_data.csv"
-EXPECTED_MIN_MAX = TEST_DATA_DIR / "min_max_scaled_data.csv"
-EXPECTED_DERIVATIVE = TEST_DATA_DIR / "derivative_data.csv"
-EXPECTED_MIN_TEMPS = TEST_DATA_DIR / "min_temperatures.csv"
+EXPECTED_RAW_ORGANIZED = TEST_DATA_DIR / "01_raw_organized_data.csv"
+EXPECTED_FILTERED = TEST_DATA_DIR / "02_filtered_organized_data.csv"
+EXPECTED_AVERAGED = TEST_DATA_DIR / "03_averaged_data.csv"
+EXPECTED_BG_SUBTRACTED = TEST_DATA_DIR / "04_bg_subtracted_data.csv"
+EXPECTED_MIN_MAX = TEST_DATA_DIR / "05_min_max_scaled_data.csv"
+EXPECTED_DERIVATIVE = TEST_DATA_DIR / "06_derivative_data.csv"
+EXPECTED_MIN_TEMPS = TEST_DATA_DIR / "07_min_temperatures.csv"
 EXPECTED_EXPERIMENT_INFO = TEST_DATA_DIR / "experiment_info.json"
 
 
@@ -129,8 +129,8 @@ class TestPipelineStage1FirstStep:
         ingest_data(ctx)
 
         # Load actual output
-        actual_output_path = ctx.experiment_dir / StepFiles.INGESTED_DATA
-        assert actual_output_path.exists(), f"{StepFiles.INGESTED_DATA} was not created"
+        actual_output_path = ctx.experiment_dir / StepFiles.INGESTED_DATA.value
+        assert actual_output_path.exists(), f"{StepFiles.INGESTED_DATA.value} was not created"
 
         actual_df = pd.read_csv(actual_output_path)
         expected_df = pd.read_csv(EXPECTED_RAW_ORGANIZED)
@@ -167,11 +167,12 @@ class TestPipelineStage1FirstStep:
         # Check a sample condition has required fields
         first_condition = next(iter(info.values()))
         assert "full_name" in first_condition
-        assert "concentration" in first_condition
-        assert "ligand_name" in first_condition
-        assert "protein_name" in first_condition
-        assert "buffer_condition" in first_condition
+        assert "condition_fields" in first_condition
+        assert "ligand" in first_condition["condition_fields"]
+        assert "protein" in first_condition["condition_fields"]
+        assert "buffer" in first_condition["condition_fields"]
         assert "replicates" in first_condition
+        assert "dimensions" in first_condition
 
     @pytest.mark.integration
     def test_first_step_handles_complex_names(self, temp_experiment_dir):
@@ -186,7 +187,7 @@ class TestPipelineStage1FirstStep:
         ingest_data(ctx)
 
         # Load and check for complex names
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA.value)
 
         # Check that ligand names with hyphens are preserved
         assert "Geranyl-diphosphate" in actual_df["ligand"].unique(), (
@@ -217,7 +218,7 @@ class TestPipelineStage2Filter:
         filter_wells(ctx, wells_to_filter=[])
 
         # Load actual output
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.FILTERED_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.FILTERED_DATA.value)
         expected_df = pd.read_csv(EXPECTED_FILTERED)
 
         # Compare
@@ -245,7 +246,7 @@ class TestPipelineStage3Average:
         average_accross_replicates(ctx)
 
         # Load actual output
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.AVERAGED_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.AVERAGED_DATA.value)
         expected_df = pd.read_csv(EXPECTED_AVERAGED)
 
         # Verify basic structure (shape may differ slightly due to code evolution)
@@ -275,7 +276,7 @@ class TestPipelineStage4BackgroundSubtraction:
         subtract_background(ctx)
 
         # Load actual output
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.BG_SUB_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.BG_SUB_DATA.value)
 
         # Verify basic structure
         assert "Temperature" in actual_df.columns, "Missing Temperature column"
@@ -298,7 +299,7 @@ class TestPipelineStage4BackgroundSubtraction:
         subtract_background(ctx)
 
         # Check that NPC columns are removed
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.BG_SUB_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.BG_SUB_DATA.value)
         npc_columns = [col for col in actual_df.columns if "NPC" in col]
 
         assert len(npc_columns) == 0, f"NPC columns still present: {npc_columns}"
@@ -326,7 +327,7 @@ class TestPipelineStage5MinMaxScale:
         min_max_scale(ctx)
 
         # Load actual output
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA.value)
 
         # Verify basic structure
         assert "Temperature" in actual_df.columns, "Missing Temperature column"
@@ -350,7 +351,7 @@ class TestPipelineStage5MinMaxScale:
         min_max_scale(ctx)
 
         # Load output
-        df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA)
+        df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA.value)
 
         # Check all numeric columns (except Temperature) are in [0, 1]
         for col in df.columns:
@@ -384,7 +385,7 @@ class TestPipelineStage6Derivative:
         calculate_derivative(ctx)
 
         # Load actual output
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.DERIVATIVE_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.DERIVATIVE_DATA.value)
 
         # Verify basic structure
         assert "Temperature" in actual_df.columns, "Missing Temperature column"
@@ -415,7 +416,7 @@ class TestPipelineStage7MinTemperature:
         find_min_temperature(ctx)
 
         # Load actual output
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA.value)
         expected_df = pd.read_csv(EXPECTED_MIN_TEMPS)
 
         # Compare
@@ -440,7 +441,7 @@ class TestPipelineStage7MinTemperature:
         find_min_temperature(ctx)
 
         # Load output
-        df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA)
+        df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA.value)
 
         # Check that complex names with hyphens are preserved
         assert "Geranyl-diphosphate" in df["ligand"].unique(), (
@@ -485,15 +486,15 @@ class TestFullPipelineIntegration:
 
         # Check all expected files exist
         expected_files = [
-            StepFiles.INGESTED_DATA,
-            StepFiles.FILTERED_DATA,
-            StepFiles.AVERAGED_DATA,
-            StepFiles.BG_SUB_DATA,
-            StepFiles.MIN_MAX_SCALED_DATA,
-            StepFiles.DERIVATIVE_DATA,
-            StepFiles.MIN_TEMPERATURES_DATA,
+            StepFiles.INGESTED_DATA.value,
+            StepFiles.FILTERED_DATA.value,
+            StepFiles.AVERAGED_DATA.value,
+            StepFiles.BG_SUB_DATA.value,
+            StepFiles.MIN_MAX_SCALED_DATA.value,
+            StepFiles.DERIVATIVE_DATA.value,
+            StepFiles.MIN_TEMPERATURES_DATA.value,
             "experiment_info.json",
-            StepFiles.FILTERED_WELLS,
+            StepFiles.FILTERED_WELLS.value,
             ".gitignore",
         ]
 
@@ -522,7 +523,7 @@ class TestFullPipelineIntegration:
         find_min_temperature(ctx)
 
         # Verify final output has reasonable values
-        min_temps = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA)
+        min_temps = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA.value)
 
         # Temperature should be in reasonable range
         assert min_temps["min_temperature"].min() > 0, "Min temperature too low"

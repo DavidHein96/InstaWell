@@ -2,14 +2,12 @@
 Dash callbacks for user interactions.
 """
 
-import base64
-import io
 import traceback
 from pathlib import Path
 
 import dash_bootstrap_components as dbc
 import pandas as pd
-from dash import Input, Output, State, callback_context, dcc, html, no_update
+from dash import Input, Output, State, callback_context, dcc, html
 from dash.exceptions import PreventUpdate
 
 from instawell import (
@@ -24,12 +22,12 @@ from instawell import (
     setup_experiment,
     subtract_background,
 )
-from instawell.figures.fig_01_raw import raw_figure_generator
-from instawell.figures.fig_02_averaged import averaged_figure_generator
 from instawell.figures.fig_03_bgsub_raw import bgsub_figure_generator
 from instawell.figures.fig_04_bgsub_minmax import bgsub_minmax_figure_generator
 from instawell.figures.fig_05_derivative import derivative_figure_generator
-from instawell.figures.fig_06_min_temp import min_temp_figure_generator
+from instawell.figures.min_temp_fig import min_temp_figure_generator
+from instawell.figures.processed_data_fig import averaged_figure_generator
+from instawell.figures.raw_data_fig import raw_figure_generator
 
 from .utils import get_experiment_list, get_experiment_status, parse_upload
 
@@ -133,7 +131,7 @@ def register_callbacks(app):
                 className="text-success",
             ), df.to_dict("records")
         except Exception as e:
-            return html.Span(f"Error: {str(e)}", className="text-danger"), None
+            return html.Span(f"Error: {e!s}", className="text-danger"), None
 
     @app.callback(
         Output("layout-upload-status", "children"),
@@ -149,20 +147,16 @@ def register_callbacks(app):
         try:
             df = parse_upload(contents, filename)
             # Basic validation - should have well column and numeric columns
-            has_well_col = any(
-                col.lower().startswith("well") for col in df.columns
-            )
+            has_well_col = any(col.lower().startswith("well") for col in df.columns)
             if not has_well_col:
-                return html.Span(
-                    "Error: Missing well column", className="text-danger"
-                ), None
+                return html.Span("Error: Missing well column", className="text-danger"), None
 
             return html.Span(
                 [html.I(className="fa fa-check-circle me-1"), f"Loaded: {filename}"],
                 className="text-success",
             ), df.to_dict("records")
         except Exception as e:
-            return html.Span(f"Error: {str(e)}", className="text-danger"), None
+            return html.Span(f"Error: {e!s}", className="text-danger"), None
 
     @app.callback(
         Output("well-filter-card", "style"),
@@ -186,9 +180,7 @@ def register_callbacks(app):
 
         # Extract well names from raw data
         raw_df = pd.DataFrame(raw_data)
-        well_columns = [
-            col for col in raw_df.columns if col != "Temperature"
-        ]
+        well_columns = [col for col in raw_df.columns if col != "Temperature"]
 
         if not well_columns:
             return {"display": "none"}, html.Div()
@@ -474,7 +466,9 @@ def register_callbacks(app):
 
         try:
             # Load experiment context
-            ctx = load_experiment_context(experiment_name, experiments_root=str(app.experiments_root))
+            ctx = load_experiment_context(
+                experiment_name, experiments_root=str(app.experiments_root)
+            )
 
             # Check which data files exist
             required_files = {
@@ -542,7 +536,7 @@ def register_callbacks(app):
             return html.Div(
                 [
                     html.I(className="fa fa-exclamation-triangle fa-2x text-danger mb-3"),
-                    html.P(f"Error loading figures: {str(e)}", className="text-danger"),
+                    html.P(f"Error loading figures: {e!s}", className="text-danger"),
                 ],
                 className="text-center py-5",
             )

@@ -273,7 +273,7 @@ def experiment_context_custom_separator(tmp_path: Path) -> "ExperimentContext":
         experiments_root=tmp_path / "experiments",
         raw_data_path=raw_path,
         layout_data_path=layout_path,
-        fields=("concentration", "ligand", "protein", "buffer"),
+        condition_fields=("concentration", "ligand", "protein", "buffer"),
         condition_separator="|",  # Custom separator
         empty_condition_placeholder="^",
         temperature_column="Temperature",

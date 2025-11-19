@@ -28,13 +28,13 @@ RAW_DATA_PATH = TEST_DATA_DIR / "TSA_067_Raw_RFU.csv"
 LAYOUT_PATH = TEST_DATA_DIR / "TSA_067_Plate_Layout.csv"
 
 # Expected output paths (golden files)
-EXPECTED_RAW_ORGANIZED = TEST_DATA_DIR / "raw_organized_data.csv"
-EXPECTED_FILTERED = TEST_DATA_DIR / "filtered_organized_data.csv"
-EXPECTED_AVERAGED = TEST_DATA_DIR / "averaged_data.csv"
-EXPECTED_BG_SUBTRACTED = TEST_DATA_DIR / "background_subtracted_data.csv"
-EXPECTED_MIN_MAX = TEST_DATA_DIR / "min_max_scaled_data.csv"
-EXPECTED_DERIVATIVE = TEST_DATA_DIR / "derivative_data.csv"
-EXPECTED_MIN_TEMPS = TEST_DATA_DIR / "min_temperatures.csv"
+EXPECTED_RAW_ORGANIZED = TEST_DATA_DIR / "01_raw_organized_data.csv"
+EXPECTED_FILTERED = TEST_DATA_DIR / "02_filtered_organized_data.csv"
+EXPECTED_AVERAGED = TEST_DATA_DIR / "03_averaged_data.csv"
+EXPECTED_BG_SUBTRACTED = TEST_DATA_DIR / "04_bg_subtracted_data.csv"
+EXPECTED_MIN_MAX = TEST_DATA_DIR / "05_min_max_scaled_data.csv"
+EXPECTED_DERIVATIVE = TEST_DATA_DIR / "06_derivative_data.csv"
+EXPECTED_MIN_TEMPS = TEST_DATA_DIR / "07_min_temperatures.csv"
 
 # Known filtered well
 FILTERED_WELL = "G20"
@@ -151,7 +151,7 @@ class TestTSA067WithFilteredWells:
         ingest_data(ctx)
 
         # Check that G20 exists in raw data
-        raw_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA)
+        raw_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA.value)
         assert FILTERED_WELL in raw_df["well"].values, (
             f"Well {FILTERED_WELL} should exist in raw data"
         )
@@ -160,13 +160,13 @@ class TestTSA067WithFilteredWells:
         filter_wells(ctx, wells_to_filter=[FILTERED_WELL])
 
         # Check that G20 is removed from filtered data
-        filtered_df = pd.read_csv(ctx.experiment_dir / StepFiles.FILTERED_DATA)
+        filtered_df = pd.read_csv(ctx.experiment_dir / StepFiles.FILTERED_DATA.value)
         assert FILTERED_WELL not in filtered_df["well"].values, (
             f"Well {FILTERED_WELL} should be removed from filtered data"
         )
 
         # Verify filtered_wells.txt contains G20
-        with open(ctx.experiment_dir / StepFiles.FILTERED_WELLS) as f:
+        with open(ctx.experiment_dir / StepFiles.FILTERED_WELLS.value) as f:
             filtered_wells = f.read().strip().split("\n")
         assert FILTERED_WELL in filtered_wells, f"filtered_wells.txt should contain {FILTERED_WELL}"
 
@@ -185,7 +185,7 @@ class TestTSA067WithFilteredWells:
         ingest_data(ctx)
 
         # Load actual and expected
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA.value)
         expected_df = pd.read_csv(EXPECTED_RAW_ORGANIZED)
 
         # Compare every value
@@ -207,7 +207,7 @@ class TestTSA067WithFilteredWells:
         filter_wells(ctx, wells_to_filter=[FILTERED_WELL])
 
         # Load actual and expected
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.FILTERED_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.FILTERED_DATA.value)
         expected_df = pd.read_csv(EXPECTED_FILTERED)
 
         # Compare every value
@@ -241,7 +241,7 @@ class TestTSA067ComprehensiveValidation:
         min_max_scale(ctx)
 
         # Load actual and expected
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA.value)
         expected_df = pd.read_csv(EXPECTED_MIN_MAX)
 
         # Validate EVERY value
@@ -285,7 +285,7 @@ class TestTSA067ComprehensiveValidation:
         calculate_derivative(ctx)
 
         # Load actual and expected
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.DERIVATIVE_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.DERIVATIVE_DATA.value)
         expected_df = pd.read_csv(EXPECTED_DERIVATIVE)
 
         # Validate EVERY value
@@ -329,7 +329,7 @@ class TestTSA067ComprehensiveValidation:
         find_min_temperature(ctx)
 
         # Load actual and expected
-        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA)
+        actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA.value)
         expected_df = pd.read_csv(EXPECTED_MIN_TEMPS)
 
         # Validate EVERY value
@@ -384,21 +384,21 @@ class TestTSA067ComprehensiveValidation:
         find_min_temperature(ctx)
 
         # Validate min_max_scaled_data
-        actual_minmax = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA)
+        actual_minmax = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA.value)
         expected_minmax = pd.read_csv(EXPECTED_MIN_MAX)
         compare_dataframes_exact(
             actual_minmax, expected_minmax, tolerance=0.005, name="min_max_scaled_data"
         )
 
         # Validate derivative_data
-        actual_deriv = pd.read_csv(ctx.experiment_dir / StepFiles.DERIVATIVE_DATA)
+        actual_deriv = pd.read_csv(ctx.experiment_dir / StepFiles.DERIVATIVE_DATA.value)
         expected_deriv = pd.read_csv(EXPECTED_DERIVATIVE)
         compare_dataframes_exact(
             actual_deriv, expected_deriv, tolerance=0.005, name="derivative_data"
         )
 
         # Validate min_temperatures
-        actual_temps = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA)
+        actual_temps = pd.read_csv(ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA.value)
         expected_temps = pd.read_csv(EXPECTED_MIN_TEMPS)
         compare_dataframes_exact(
             actual_temps, expected_temps, tolerance=0.01, name="min_temperatures"
@@ -435,7 +435,7 @@ class TestTSA067ParserValidation:
         ingest_data(ctx)
 
         # Load organized data
-        df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA)
+        df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA.value)
 
         # Check that all expected columns exist
         required_cols = [

@@ -8,104 +8,107 @@ from instawell.core.steps import StepFiles
 from instawell.utils.logging_util import setup_experiment_logging
 from instawell.utils.utils import convert_concentration_to_float
 
-# set logging level to INFO
 logger = logging.getLogger(__name__)
 
 
 def _avg_across_replicates(
     organized_data: pd.DataFrame,
     sep: str = "|",
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Averages the data across replicates.
+    Groups by the unique condition and temperature, then average the values.
+    It also pivots the data so that each unique condition is a column.
     """
-    # Group by the unique condition and temperature, then average the values
-    organized_data["unqcond"] = (
-        organized_data["concentration"]
-        + sep
-        + organized_data["ligand"]
-        + sep
-        + organized_data["protein"]
-        + sep
-        + organized_data["buffer"]
-    )
-    # Drop well_unqcond as it is not needed for averaging
-    # organized_data = organized_data.drop(columns=["well_unqcond"])
-    # Add a column for the unique condition
-    # averaged_data = raw_data_long.groupby(['Temperature', 'combination2']).agg({'value': 'mean'}).reset_index()
 
-    averaged_data = (
-        organized_data.groupby(["Temperature", "unqcond"]).agg({"value": "mean"}).reset_index()
+    cols_to_carry = [
+        c for c in organized_data.columns if c not in {"value", "well", "well_unqcond"}
+    ]
+    # Build aggregation: mean for value; 'first' for everything else we want to carry along
+    agg_dict = {"value": "mean"}
+    for c in cols_to_carry:
+        # 'unqcond' and 'Temperature' will be in the groupby keys; including them in agg is harmless
+        agg_dict[c] = "first"
+    averaged_data_long = organized_data.groupby(["Temperature", "unqcond"], as_index=False).agg(
+        agg_dict
     )
 
-    averaged_data_pivot = averaged_data.pivot(
+    # Make the wide pivot
+    averaged_data_pivot = averaged_data_long.pivot(
         index="Temperature", columns="unqcond", values="value"
     )
 
-    # averaged_data_pivot = split_unqcon_column(averaged_data_pivot)
-
-    return averaged_data_pivot
+    return averaged_data_pivot, averaged_data_long
 
 
 def average_accross_replicates(ctx: ExperimentContext) -> None:
     """
-    The second step of the data processing pipeline.
-    It filters the organized data based on the provided parameters.
+    Averages the data across replicates.
+
+    Parameters
+    ----------
+    ctx : ExperimentContext
+        The experiment context containing configuration and paths.
+
+    Raises
+    ------
+    PrerequisiteStepError
+        If the filtered data file is not found.
+    ValueError
+        If any required columns are missing from the data, they should be there so this is just detecting corruption.
     """
     if ctx.log_to_file:
         setup_experiment_logging(
             experiment_dir=ctx.experiment_dir, filename="experiment.log", level=ctx.log_level
         )
-    filtered_data_path = ctx.experiment_dir / StepFiles.FILTERED_DATA
+    filtered_data_path = ctx.experiment_dir / StepFiles.FILTERED_DATA.value
 
     if not filtered_data_path.exists():
-        raise PrerequisiteStepError(f"Filtered data file not found: {filtered_data_path}")
-    # Load the filtered data
+        raise PrerequisiteStepError(
+            f"Filtered data file not found: {filtered_data_path}, ensure filtering step has been run."
+            "The filtering step must be run even if no wells are to be filtered, in order to record that no wells were filtered."
+        )
     filtered_data = pd.read_csv(filtered_data_path)
-    required_columns = [
-        "Temperature",
-        "well",
-        "value",
-        "ligand",
-        "protein",
-        "buffer",
-        "concentration",
-        "well_unqcond",
-    ]
-    for col in required_columns:
-        if col not in filtered_data.columns:
-            raise ValueError(f"Missing required column: {col} in the data.")
+
+    # ---- Validate columns ----
+    base_required = {"Temperature", "value", "well", "unqcond", "well_unqcond"}
+    missing = (base_required | set(ctx.condition_fields)) - set(filtered_data.columns)
+    if missing:
+        raise ValueError(f"Missing required columns: {sorted(missing)}")
+
     sep = ctx.condition_separator
-    averaged_data = _avg_across_replicates(organized_data=filtered_data, sep=sep)
-
-    # in the averaged across replicates data, we need to sort the columns (except for Temperature) by matching ligand, protein, and buffer
-    # Sort the columns based on ligand, protein, and buffer. then within each group, sort by increasing concentration
-    # get the columns except for Temperature
-    columns_to_sort = averaged_data.columns[1:]  # Exclude 'Temperature'
-
-    # field_positions = {field: idx for idx, field in enumerate(ctx.fields)}
-
-    sorted_columns = sorted(
-        columns_to_sort,
-        key=lambda x: (
-            x.split(sep)[1],  # ligand
-            x.split(sep)[2],  # protein
-            x.split(sep)[3],  # buffer
-            convert_concentration_to_float(
-                x.split(sep)[0]
-            ),  # concentration, convert to float for sorting
-        ),
+    averaged_data_pivot, averaged_data_long = _avg_across_replicates(
+        organized_data=filtered_data, sep=sep
     )
-    # print(f"Sorted columns: {sorted_columns}")
-    # Reorder the columns in the DataFrame
-    averaged_data_sorted = averaged_data[sorted_columns]
-    # Reset the index to make Temperature a column again
-    averaged_data_sorted.reset_index(inplace=True)
-    averaged_data.reset_index(inplace=True)
-    # Add the Temperature column back to the front
-    # averaged_data_sorted.insert(0, "Temperature", averaged_data["Temperature"])
 
-    # Save the averaged data to a CSV file in the experiment directory
-    averaged_data_path = ctx.experiment_dir / StepFiles.AVERAGED_DATA
+    condition_columns = list(averaged_data_pivot.columns)
+
+    if ctx.condition_fields != ("concentration", "ligand", "protein", "buffer"):
+        logger.warning(
+            "Custom condition fields detected, but sorting of averaged data columns only supports"
+            "the standard fields (concentration, ligand, protein, buffer). Columns will not be sorted."
+        )
+        sorted_columns = condition_columns
+    else:
+        sorted_columns = sorted(
+            condition_columns,
+            key=lambda x: (
+                x.split(sep)[1],  # ligand
+                x.split(sep)[2],  # protein
+                x.split(sep)[3],  # buffer
+                convert_concentration_to_float(
+                    x.split(sep)[0]
+                ),  # concentration, convert to float for sorting
+            ),
+        )
+
+    averaged_data_sorted = averaged_data_pivot[
+        sorted_columns
+    ].reset_index()  # brings Temperature back as a column
+
+    averaged_data_path = ctx.experiment_dir / StepFiles.AVERAGED_DATA.value
     averaged_data_sorted.to_csv(averaged_data_path, index=False)
+
+    averaged_data_long_path = ctx.experiment_dir / StepFiles.AVERAGED_DATA_LONG.value
+    averaged_data_long.to_csv(averaged_data_long_path, index=False)
     logger.info(f"Averaged data saved to {averaged_data_path}")
+    logger.info(f"Averaged long data saved to {averaged_data_long_path}")

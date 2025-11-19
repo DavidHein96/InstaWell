@@ -4,9 +4,6 @@ Main Dash application setup.
 
 from pathlib import Path
 
-import dash_bootstrap_components as dbc
-from dash import Dash
-
 from .callbacks import register_callbacks
 from .designer_callbacks import register_designer_callbacks
 from .layout import create_layout
@@ -45,10 +42,22 @@ def create_app(experiments_root: str = "experiments", debug: bool = False) -> Da
 
 
 def main():
+    try:
+        import dash_bootstrap_components as dbc  # noqa: PLC0415
+        from dash import Dash  # noqa: PLC0415
+    except ImportError as exc:
+        # Very friendly error for users who don't have the extra
+        message = (
+            "The Instawell Dash app requires the 'dash' extra.\n"
+            "Install it with:\n\n"
+            "    pip install 'instawell[dash]'\n"
+        )
+        raise SystemExit(message) from exc
     """Entry point for running the Dash app standalone."""
     app = create_app(debug=True)
     app.run(host="127.0.0.1", port=8050, debug=True)
 
 
 if __name__ == "__main__":
+    raise NotImplementedError
     main()

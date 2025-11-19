@@ -80,7 +80,7 @@ class TestExperimentContextValidation:
 
         # Check defaults
         assert ctx.experiments_root == Path("experiments")
-        assert ctx.fields == ("concentration", "ligand", "protein", "buffer")
+        assert ctx.condition_fields == ("concentration", "ligand", "protein", "buffer")
         assert ctx.well_col_identifier == "Well"
         assert ctx.empty_condition_placeholder == "0"
         assert ctx.condition_separator == "_"
@@ -217,7 +217,7 @@ class TestExperimentContextValidation:
             experiment_name="test",
             raw_data_path=raw_path,
             layout_data_path=layout_path,
-            fields=("a", "b", "c", "d"),
+            condition_fields=("a", "b", "c", "d"),
             condition_separator="|",
             empty_condition_placeholder="^",
         )
@@ -237,10 +237,10 @@ class TestExperimentContextValidation:
             experiment_name="test",
             raw_data_path=raw_path,
             layout_data_path=layout_path,
-            fields=custom_fields,
+            condition_fields=custom_fields,
         )
 
-        assert ctx.fields == custom_fields
+        assert ctx.condition_fields == custom_fields
 
     @pytest.mark.unit
     def test_created_at_timestamp(self, tmp_path):
@@ -361,7 +361,7 @@ class TestLoadExperimentContext:
         # Verify loaded context matches original
         assert loaded_ctx.experiment_name == original_ctx.experiment_name
         assert loaded_ctx.experiment_dir == original_ctx.experiment_dir
-        assert loaded_ctx.fields == original_ctx.fields
+        assert loaded_ctx.condition_fields == original_ctx.condition_fields
         assert loaded_ctx.condition_separator == original_ctx.condition_separator
 
     @pytest.mark.unit
@@ -376,7 +376,7 @@ class TestLoadExperimentContext:
             layout_data_path=str(layout_path),
             experiments_root=str(tmp_path),
             condition_separator="|",
-            fields=("ligand", "protein", "concentration", "buffer"),
+            condition_fields=("ligand", "protein", "concentration", "buffer"),
         )
 
         # Load it
@@ -384,7 +384,7 @@ class TestLoadExperimentContext:
 
         # Verify custom config is preserved
         assert loaded_ctx.condition_separator == "|"
-        assert loaded_ctx.fields == ("ligand", "protein", "concentration", "buffer")
+        assert loaded_ctx.condition_fields == ("ligand", "protein", "concentration", "buffer")
 
     @pytest.mark.unit
     def test_load_nonexistent_experiment_fails(self, tmp_path):
@@ -403,10 +403,9 @@ class TestLoadExperimentContext:
             raw_data_path=str(raw_path),
             layout_data_path=str(layout_path),
             experiments_root=str(tmp_path),
-            fields=("protein", "ligand", "buffer", "concentration"),
+            condition_fields=("protein", "ligand", "buffer", "concentration"),
             condition_separator="|",
             empty_condition_placeholder="~",
-            temperature_column="Temp",
             non_protein_control_marker="CTRL",
         )
 
@@ -415,10 +414,9 @@ class TestLoadExperimentContext:
 
         # Verify all fields match
         assert loaded_ctx.experiment_name == original_ctx.experiment_name
-        assert loaded_ctx.fields == original_ctx.fields
+        assert loaded_ctx.condition_fields == original_ctx.condition_fields
         assert loaded_ctx.condition_separator == original_ctx.condition_separator
         assert loaded_ctx.empty_condition_placeholder == original_ctx.empty_condition_placeholder
-        assert loaded_ctx.temperature_column == original_ctx.temperature_column
         assert loaded_ctx.non_protein_control_marker == original_ctx.non_protein_control_marker
 
 

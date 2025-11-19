@@ -18,7 +18,7 @@ from instawell import (
     ingest_data,
     setup_experiment,
 )
-from instawell.core.parser import parse_condition_string, validate_condition_string
+from instawell.core.parser import parse_condition_string
 
 
 class TestCustomSeparators:
@@ -64,7 +64,7 @@ class TestCustomSeparators:
         ingest_data(ctx)
 
         # Verify the data was parsed correctly
-        ingested_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA)
+        ingested_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA.value)
         assert "ligand" in ingested_df.columns
         assert "ATP" in ingested_df["ligand"].values
 
@@ -105,7 +105,7 @@ class TestCustomSeparators:
         ingest_data(ctx)
 
         # Verify parsing worked
-        ingested_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA)
+        ingested_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA.value)
         assert "GTP" in ingested_df["ligand"].values
         assert "Protein2" in ingested_df["protein"].values
 
@@ -117,41 +117,38 @@ class TestSpecialCharacters:
     def test_parse_condition_with_hyphens(self):
         """Test parsing conditions with hyphens in names."""
         result = parse_condition_string("500uM_ATP-gamma-S_d104hFic-H363A_Buffer-1")
-
-        assert result["concentration"] == "500uM"
-        assert result["ligand"] == "ATP-gamma-S"
-        assert result["protein"] == "d104hFic-H363A"
-        assert result["buffer"] == "Buffer-1"
+        assert result.dimensions["concentration"] == "500uM"
+        assert result.dimensions["ligand"] == "ATP-gamma-S"
+        assert result.dimensions["protein"] == "d104hFic-H363A"
+        assert result.dimensions["buffer"] == "Buffer-1"
 
     @pytest.mark.unit
     def test_parse_condition_with_numbers(self):
         """Test parsing conditions with numbers in names."""
         result = parse_condition_string("100nM_Ligand123_Protein456_Buffer789")
-
-        assert result["concentration"] == "100nM"
-        assert result["ligand"] == "Ligand123"
-        assert result["protein"] == "Protein456"
-        assert result["buffer"] == "Buffer789"
+        assert result.dimensions["concentration"] == "100nM"
+        assert result.dimensions["ligand"] == "Ligand123"
+        assert result.dimensions["protein"] == "Protein456"
+        assert result.dimensions["buffer"] == "Buffer789"
 
     @pytest.mark.unit
     def test_parse_condition_with_greek_letters(self):
         """Test parsing conditions with unicode characters."""
         result = parse_condition_string("50μM_ATP-γ-S_Proteinα_Bufferβ")
+        assert result.dimensions["concentration"] == "50μM"
+        assert result.dimensions["ligand"] == "ATP-γ-S"
+        assert result.dimensions["protein"] == "Proteinα"
+        assert result.dimensions["buffer"] == "Bufferβ"
 
-        assert result["concentration"] == "50μM"
-        assert result["ligand"] == "ATP-γ-S"
-        assert result["protein"] == "Proteinα"
-        assert result["buffer"] == "Bufferβ"
-
-    @pytest.mark.unit
-    def test_validate_complex_condition_strings(self):
-        """Test validation of complex but valid condition strings."""
-        # These should all be valid
-        assert validate_condition_string(
-            "500uM_Geranyl-Monophosphate_d104hFic-H363A_1mM-ATP-5mM-MgCl2"
-        )
-        assert validate_condition_string("1.5mM_ATP_His6-MBP-Protein_20mM-Tris-pH7.4")
-        assert validate_condition_string("apo_DMSO_NPC_Buffer1")
+    # @pytest.mark.unit
+    # def test_validate_complex_condition_strings(self):
+    #     """Test validation of complex but valid condition strings."""
+    #     # These should all be valid
+    #     assert validate_condition_string(
+    #         "500uM_Geranyl-Monophosphate_d104hFic-H363A_1mM-ATP-5mM-MgCl2"
+    #     )
+    #     assert validate_condition_string("1.5mM_ATP_His6-MBP-Protein_20mM-Tris-pH7.4")
+    #     assert validate_condition_string("apo_DMSO_NPC_Buffer1")
 
 
 class TestFilterWellsEdgeCases:
@@ -196,7 +193,7 @@ class TestFilterWellsEdgeCases:
         # Filter all wells of first condition
         filter_wells(ctx, wells_to_filter=["A1", "A2"])
 
-        filtered_df = pd.read_csv(ctx.experiment_dir / StepFiles.FILTERED_DATA)
+        filtered_df = pd.read_csv(ctx.experiment_dir / StepFiles.FILTERED_DATA.value)
 
         # Should only have B1 and B2 left
         unique_wells = filtered_df["well"].unique()
@@ -223,8 +220,8 @@ class TestFilterWellsEdgeCases:
         filter_wells(ctx, wells_to_filter=[])
 
         # Filtered data should have same number of rows as ingested
-        ingested_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA)
-        filtered_df = pd.read_csv(ctx.experiment_dir / StepFiles.FILTERED_DATA)
+        ingested_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA.value)
+        filtered_df = pd.read_csv(ctx.experiment_dir / StepFiles.FILTERED_DATA.value)
 
         assert len(filtered_df) == len(ingested_df)
 
@@ -247,7 +244,7 @@ class TestFilterWellsEdgeCases:
             filter_wells(ctx, wells_to_filter=["Z99"])
 
         # Should not create a filtered data file
-        filtered_data_path = ctx.experiment_dir / StepFiles.FILTERED_DATA
+        filtered_data_path = ctx.experiment_dir / StepFiles.FILTERED_DATA.value
         assert not filtered_data_path.exists()
 
 
@@ -286,7 +283,7 @@ class TestEmptyConditions:
 
         ingest_data(ctx)
 
-        ingested_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA)
+        ingested_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA.value)
 
         # Check that C1 was parsed with placeholder values
         c1_data = ingested_df[ingested_df["well"] == "C1"]
@@ -306,29 +303,24 @@ class TestParserEdgeCases:
 
         result = parse_condition_string(condition_str)
 
-        assert result["ligand"] == long_ligand
-        assert len(result["ligand"]) == 100
+        assert result.dimensions["ligand"] == long_ligand
+        assert len(result.dimensions["ligand"]) == 100
 
     @pytest.mark.unit
     def test_parse_condition_with_extra_underscores(self):
-        """Test parsing takes last N components (handles extra underscores)."""
+        """Tests that an error is raised when there are too many components."""
         # This has 6 underscore-separated parts, should take last 4
-        result = parse_condition_string("Extra_Info_500uM_ATP_Protein1_Buffer1")
-
-        assert result["concentration"] == "500uM"
-        assert result["ligand"] == "ATP"
-        assert result["protein"] == "Protein1"
-        assert result["buffer"] == "Buffer1"
+        with pytest.raises(ValueError):
+            parse_condition_string("Extra_Info_500uM_ATP_Protein1_Buffer1")
 
     @pytest.mark.unit
     def test_parse_minimal_components(self):
         """Test parsing with exactly 4 components (minimal valid input)."""
         result = parse_condition_string("A_B_C_D")
-
-        assert result["concentration"] == "A"
-        assert result["ligand"] == "B"
-        assert result["protein"] == "C"
-        assert result["buffer"] == "D"
+        assert result.dimensions["concentration"] == "A"
+        assert result.dimensions["ligand"] == "B"
+        assert result.dimensions["protein"] == "C"
+        assert result.dimensions["buffer"] == "D"
 
     @pytest.mark.unit
     def test_parse_condition_invalid_too_few_components(self):
@@ -380,12 +372,12 @@ class TestCustomFieldOrder:
             raw_data_path=str(raw_path),
             layout_data_path=str(layout_path),
             experiments_root=str(tmp_path / "experiments"),
-            fields=("buffer", "protein", "ligand", "concentration"),
+            condition_fields=("buffer", "protein", "ligand", "concentration"),
         )
 
         ingest_data(ctx)
 
-        ingested_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA)
+        ingested_df = pd.read_csv(ctx.experiment_dir / StepFiles.INGESTED_DATA.value)
 
         # Verify correct parsing with reversed order
         assert "Buffer1" in ingested_df["buffer"].values

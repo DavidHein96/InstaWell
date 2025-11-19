@@ -85,7 +85,10 @@ build/
 .ipynb_checkpoints
 
 .vscode/
-
+all_data
 todo.md
 *.zip
 .coverage
+publishing.md
+.pypirc
+testing.ipynb

@@ -12,33 +12,55 @@ logger = logging.getLogger(__name__)
 
 
 def find_min_temperature(ctx: ExperimentContext) -> None:
-    """Finds the minimum temperature for each unique condition in the derivative data."""
+    """
+    Finds the temperature at the minimum of the derivative curve for each condition.
+
+    This step uses the long-format derivative data. It groups the data by each
+    unique condition, finds the index of the minimum derivative value within each
+    group, and retrieves the corresponding temperature. The final output is a table
+    mapping each condition to its calculated minimum temperature.
+
+    Parameters
+    ----------
+    ctx : ExperimentContext
+        _description_
+
+    Raises
+    ------
+    FileNotFoundError
+        _description_
+    """
     if ctx.log_to_file:
         setup_experiment_logging(
             experiment_dir=ctx.experiment_dir, filename="experiment.log", level=ctx.log_level
         )
-    # Build the path to the derivative data
-    derivative_data_path = ctx.experiment_dir / StepFiles.DERIVATIVE_DATA
-    if not derivative_data_path.exists():
-        raise FileNotFoundError(f"Derivative data file not found: {derivative_data_path}")
-    # Load the derivative data
-    data = pd.read_csv(derivative_data_path)
-    # ensure the first column is 'Temperature', we know it should be b/c we construct it that way
-    if data.columns[0] != "Temperature":
-        raise ValueError("The first column must be 'Temperature'.")
-    min_temps = {}
-    for col in data.columns:  # Skip the first column (Temperature)
-        if col in ["Temperature", "index"]:
-            continue
-        min_index = data[col].idxmin()
-        # if min_index is not None:
-        # BUG? this should probnably always be an int
-        min_temp = data["Temperature"].iloc[int(min_index)]
-        min_temps[col] = min_temp
-    # need to convert the min_temps dictionary to a DataFrame
-    min_temps_df = pd.DataFrame(list(min_temps.items()), columns=["unqcond", "min_temperature"])
-    # Save the min temperatures to a CSV file
-    min_temps_df = split_unqcon_column(min_temps_df)
-    min_temps_path = ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA
+
+    # ---- Load Long Format Derivative Data ----
+    long_data_path = ctx.experiment_dir / StepFiles.DERIVATIVE_DATA_LONG.value
+    if not long_data_path.exists():
+        raise FileNotFoundError(f"Long format derivative data file not found: {long_data_path}")
+    long_data = pd.read_csv(long_data_path)
+
+    # ---- Find Temperature at Minimum Derivative for Each Condition ----
+    # Get the index of the minimum value for each group
+    min_indices = long_data.groupby("unqcond")["value"].idxmin()
+    # Select the rows corresponding to these minimums
+    min_temps_df = long_data.loc[min_indices].copy()
+
+    # ---- Prepare Final DataFrame ----
+    # We only need the condition and the temperature
+    min_temps_df = min_temps_df[["unqcond", "Temperature"]]
+    # Rename 'Temperature' to 'min_temperature' for clarity
+    min_temps_df = min_temps_df.rename(columns={"Temperature": "min_temperature"})
+
+    # Split the 'unqcond' column back into its component parts
+    if "unqcond" in min_temps_df.columns:
+        min_temps_df = split_unqcon_column(
+            min_temps_df, fields=ctx.condition_fields, delimiter=ctx.condition_separator
+        )
+
+    # ---- Save Outputs ----
+    # Theres only one format for this
+    min_temps_path = ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA.value
     min_temps_df.to_csv(min_temps_path, index=False)
-    logging.info(f"Min temperatures saved to {min_temps_path}")
+    logger.info("Min temperatures (wide) saved to %s", min_temps_path)

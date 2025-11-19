@@ -10,37 +10,91 @@ from instawell.utils.logging_util import setup_experiment_logging
 logger = logging.getLogger(__name__)
 
 
+def _load_data(ctx: ExperimentContext) -> pd.DataFrame:
+    long_data_path = ctx.experiment_dir / StepFiles.BG_SUB_DATA_LONG.value
+    if not long_data_path.exists():
+        raise FileNotFoundError(
+            f"Long format background subtracted data file not found: {long_data_path}"
+        )
+    long_data = pd.read_csv(long_data_path)
+    return long_data
+
+
 def min_max_scale(ctx: ExperimentContext) -> None:
-    """Min-max scales the background subtracted data."""
+    """
+    _summary_
+
+    Parameters
+    ----------
+    ctx : ExperimentContext
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+
+    Raises
+    ------
+    FileNotFoundError
+        _description_
+    ValueError
+        _description_
+    """
     if ctx.log_to_file:
         setup_experiment_logging(
             experiment_dir=ctx.experiment_dir, filename="experiment.log", level=ctx.log_level
         )
-    # Build the path to the background subtracted data
-    bg_data_path = ctx.experiment_dir / StepFiles.BG_SUB_DATA
-    if not bg_data_path.exists():
-        raise FileNotFoundError(f"BG subtracted data file not found: {bg_data_path}")
-    # Load the background subtracted data
-    data = pd.read_csv(bg_data_path)
-    # ensure the first column is 'Temperature', we know it should be b/c we construct it that way
-    if data.columns[0] != "Temperature":
-        raise ValueError("The first column must be 'Temperature'.")
-    for col in data.columns:
-        if col.startswith("Temperature"):
-            continue
-        if data[col].max() - data[col].min() == 0:
-            continue  # Avoid division by zero
-        data[col] = (data[col] - data[col].min()) / (data[col].max() - data[col].min())
-    # ensure columns except Temperature are scaled between 0 and 1
-    for col in data.columns:
-        if col.startswith("Temperature"):
-            continue
-        if data[col].min() < 0 or data[col].max() > 1:
-            raise ValueError(f"Column {col} not scaled between 0 and 1.")
-    # ensure Temperature column is unchanged
-    if not data["Temperature"].equals(pd.read_csv(bg_data_path)["Temperature"]):
-        raise ValueError("Temperature column has been altered during scaling.")
-    # Save the min-max scaled data
-    scaled_data_path = ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA
-    data.to_csv(scaled_data_path, index=False)
-    logging.info(f"Min-max scaled data saved to {scaled_data_path}")
+
+    # ---- Load Long Format Data ----
+    long_data = _load_data(ctx)
+
+    # ---- Define Scaling Function ----
+    def scale_group(group: pd.Series) -> pd.Series:
+        min_val = group.min()
+        max_val = group.max()
+        denominator = max_val - min_val
+        if denominator == 0:
+            # Log a warning for the specific group (unique condition)
+            unqcond = long_data.loc[group.index, "unqcond"].iloc[0]
+            logger.warning("Condition '%s' has no variance and will not be scaled.", unqcond)
+            return group  # Return original values if no variance
+        return (group - min_val) / denominator
+
+    # ---- Apply Scaling ----
+    long_data["value"] = long_data.groupby("unqcond")["value"].transform(scale_group)
+
+    # ---- Post-Scaling Verification ----
+    # Using a small tolerance for floating point comparisons
+    if not (long_data["value"].min() >= -1e-9 and long_data["value"].max() <= 1 + 1e-9):
+        raise ValueError(
+            "Data not scaled between 0 and 1. "
+            f"Min: {long_data['value'].min()}, Max: {long_data['value'].max()}"
+        )
+
+    # ---- Save Long Format Data ----
+    scaled_long_path = ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA_LONG.value
+    long_data.to_csv(scaled_long_path, index=False)
+    logger.info("Min-max scaled long data saved to %s", scaled_long_path)
+
+    # ---- Create and Save Wide Format Data ----
+    wide_data = long_data.pivot(
+        index="Temperature", columns="unqcond", values="value"
+    ).reset_index()
+
+    # Re-order columns to match the original wide format for consistency
+    original_wide_path = ctx.experiment_dir / StepFiles.BG_SUB_DATA.value
+    if original_wide_path.exists():
+        original_wide = pd.read_csv(original_wide_path)
+        original_cols = original_wide.columns
+        final_cols = [col for col in original_cols if col in wide_data.columns]
+        wide_data = wide_data[final_cols]
+    else:
+        logger.warning(
+            "Could not find original wide data file to match column order: %s",
+            original_wide_path,
+        )
+
+    scaled_wide_path = ctx.experiment_dir / StepFiles.MIN_MAX_SCALED_DATA.value
+    wide_data.to_csv(scaled_wide_path, index=False)
+    logger.info("Min-max scaled wide data saved to %s", scaled_wide_path)

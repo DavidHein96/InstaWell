@@ -1,11 +1,14 @@
-# InstaWell =,
+
+
+# InstaWell
+
+![instawell — thermal shift tools](https://raw.githubusercontent.com/DavidHein96/InstaWell/main/docs/assets/instawell-icon-256.png)
 
 A powerful toolkit for analyzing Differential Scanning Fluorimetry (DSF) / Thermal Shift Assay data.
 
 InstaWell helps researchers process temperature-dependent fluorescence measurements from multi-well plates, identify melting temperatures (Tm), and compare protein stability across different experimental conditions.
 
 ## Features
-
 
 ## Quick Start (CLI)
 

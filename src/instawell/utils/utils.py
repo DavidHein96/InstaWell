@@ -1,8 +1,9 @@
 import logging
 
+import numpy as np
 import pandas as pd
 
-from instawell.core.parser import condition_from_string
+from instawell.core.parser import parse_condition_string
 
 # set logging level to INFO
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -23,66 +24,57 @@ def convert_concentration_to_float(concentration: str) -> float:
         return float(concentration.strip())
 
 
+def convert_concentration_to_float_log(concentration: str) -> float:
+    if "uM" in concentration:
+        return np.log1p(float(concentration.replace("uM", "").strip()))
+    elif "mM" in concentration:
+        return np.log1p(float(concentration.replace("mM", "").strip()) * 1000)  # Convert mM to uM
+    elif "nM" in concentration:
+        # check if it is zero
+        c = concentration.replace("nM", "").strip()
+        if c == "0":
+            return np.log1p(float(c))
+        return np.log1p(float(c) / 1000)
+    else:
+        return np.log1p(float(concentration.strip()))
+
+
 def split_unqcon_column(
     data: pd.DataFrame,
-    fields: tuple[str, ...] = ("concentration", "ligand", "protein", "buffer"),
-    delimiter: str = "_",
+    fields: tuple[str, ...],
+    delimiter: str,
 ) -> pd.DataFrame:
     """
-    Split the 'unqcond' column into its component parts using the robust parser.
-
-    This version handles underscores in component names correctly.
+    Splits the 'unqcond' column into its component parts based on the provided fields.
 
     Args:
-        data: DataFrame with an 'unqcond' column containing condition strings
-        fields: Ordered tuple of field names to parse from condition strings.
-                Default: ("concentration", "ligand", "protein", "buffer")
-                The last len(fields) components of each condition string will be parsed in this order.
+        data: DataFrame with an 'unqcond' column.
+        fields: Ordered tuple of field names to parse from the 'unqcond' strings.
+        delimiter: Character used to separate fields in the 'unqcond' string.
 
     Returns:
-        DataFrame with added columns corresponding to the field names
-
-    Examples:
-        >>> df = pd.DataFrame({"unqcond": ["500uM_ATP_Fic_buffer1"]})
-        >>> # Default parsing
-        >>> df = split_unqcon_column(df)
-        >>> print(df[["concentration", "ligand", "protein", "buffer"]])
-
-        >>> # Custom field order
-        >>> df = split_unqcon_column(df, fields=("ligand", "protein", "concentration", "buffer"))
+        DataFrame with new columns corresponding to the specified fields.
     """
-    # Parse each condition string
-    parsed_conditions = []
+    if "unqcond" not in data.columns:
+        raise ValueError("Input DataFrame must have a 'unqcond' column.")
+
+    parsed_rows = []
     for condition_str in data["unqcond"]:
         try:
-            condition_obj = condition_from_string(
-                condition_str, delimiter=delimiter, fields=fields, include_replicates=False
+            condition_obj = parse_condition_string(
+                condition_str, delimiter=delimiter, fields=fields
             )
-            # Map the parsed fields to their values
-            parsed_conditions.append(
-                {
-                    "concentration": condition_obj.concentration,
-                    "ligand": condition_obj.ligand_name,
-                    "protein": condition_obj.protein_name,
-                    "buffer": condition_obj.buffer_condition,
-                }
-            )
+            parsed_rows.append(condition_obj.dimensions)
         except ValueError as e:
-            # If parsing fails, use empty strings for all fields
             logging.warning(f"Failed to parse condition '{condition_str}': {e}")
-            parsed_conditions.append(
-                {
-                    "concentration": "",
-                    "ligand": "",
-                    "protein": "",
-                    "buffer": "",
-                }
-            )
+            # Append a dictionary with null values for all fields
+            parsed_rows.append({field: None for field in fields})
 
-    # Add the parsed columns to the dataframe
-    parsed_df = pd.DataFrame(parsed_conditions)
-    for field in ["concentration", "ligand", "protein", "buffer"]:
-        data[field] = parsed_df[field]
+    # Create a new DataFrame from the parsed data
+    parsed_df = pd.DataFrame(parsed_rows, index=data.index)
+
+    # Assign the new columns to the original DataFrame
+    data[list(fields)] = parsed_df[list(fields)]
 
     return data
 
@@ -100,3 +92,13 @@ def slugify(s: str) -> str:
         else:
             keep.append("_")
     return "".join(keep).strip("_")
+
+
+# def load_valid_df(ctx: ExperimentContext, step_file: StepFiles, cols_to_check: list[str]|None = None) -> pd.DataFrame:
+#     long_data_path = ctx.experiment_dir / StepFiles.BG_SUB_DATA_LONG.value
+#     if not long_data_path.exists():
+#         raise FileNotFoundError(
+#             f"Long format background subtracted data file not found: {long_data_path}"
+#         )
+#     long_data = pd.read_csv(long_data_path)
+#     return long_data

@@ -6,10 +6,22 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, FilePath, computed_field, field_validator, model_validator
 
+from .steps import StepFiles
+
 logger = logging.getLogger(__name__)
 
 
 class ExperimentContext(BaseModel):
+    """
+    Configuration and paths for a single Instawell experiment.
+
+    This object is:
+    - created during setup_experiment()
+    - saved to `experiment.json` in the experiment directory
+    - passed into subsequent processing and plotting steps.
+    - can be re-loaded with load_experiment_context()
+    """
+
     experiment_name: str
 
     # Where all experiments live (default ./experiments)
@@ -24,7 +36,7 @@ class ExperimentContext(BaseModel):
     layout_data_source: FilePath | None = None
 
     # fields (must ensure these are in the correct order)
-    fields: tuple[str, ...] = ("concentration", "ligand", "protein", "buffer")
+    condition_fields: tuple[str, ...] = ("concentration", "ligand", "protein", "buffer")
     well_col_identifier: str = "Well"
     empty_condition_placeholder: str = "0"
     condition_separator: str = "_"
@@ -48,11 +60,11 @@ class ExperimentContext(BaseModel):
 
     @property
     def log_path(self) -> Path:
-        return self.experiment_dir / "experiment.log"
+        return self.experiment_dir / StepFiles.EXPERIMENT_LOG.value
 
     @property
     def metadata_path(self) -> Path:
-        return self.experiment_dir / "experiment.json"
+        return self.experiment_dir / StepFiles.EXPERIMENT_CONTEXT.value
 
     @computed_field  # included in model_dump / JSON
     @property
@@ -97,7 +109,7 @@ class ExperimentContext(BaseModel):
 
             -> "^|^|^|^"
         """
-        n = len(self.fields)
+        n = len(self.condition_fields)
         if n == 0:
             return ""
         return self.condition_separator.join(self.empty_condition_placeholder for _ in range(n))
@@ -131,7 +143,7 @@ class ExperimentContext(BaseModel):
             )
 
         # If fields exist, mask must be non-empty (sanity check)
-        if self.fields and not self.empty_condition_mask:
+        if self.condition_fields and not self.empty_condition_mask:
             raise ValueError(
                 "empty_condition_mask computed as empty; check fields/placeholder config."
             )
