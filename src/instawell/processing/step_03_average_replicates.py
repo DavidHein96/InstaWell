@@ -42,19 +42,26 @@ def _avg_across_replicates(
 
 def average_across_replicates(ctx: ExperimentContext) -> None:
     """
-    Averages the data across replicates.
+    Group the filtered long-form data by temperature/condition and compute the
+    replicate means, producing both wide and long tables.
 
     Parameters
     ----------
     ctx : ExperimentContext
-        The experiment context containing configuration and paths.
+        Experiment context pointing at the output of :func:`filter_wells`.
+
+    Side Effects
+    ------------
+    - Reads ``02_filtered_organized_data.csv``.
+    - Writes ``03_averaged_data.csv`` (wide matrix) and
+      ``03_averaged_data_long.csv`` (long table with condition metadata).
 
     Raises
     ------
     PrerequisiteStepError
-        If the filtered data file is not found.
+        If the filtered data file is missing (step 02 not executed).
     ValueError
-        If any required columns are missing from the data, they should be there so this is just detecting corruption.
+        If expected columns are missing, indicating corrupted inputs.
     """
     if ctx.log_to_file:
         setup_experiment_logging(

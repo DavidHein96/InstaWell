@@ -45,9 +45,9 @@ Figures:
 """
 
 import logging
+from importlib.metadata import PackageNotFoundError, version
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
-
 from .core.exp_context import ExperimentContext
 from .core.steps import StepFiles
 from .figures.notebook_helpers import (
@@ -88,3 +88,9 @@ __all__ = [
     "min_temp_figures_widget",
     "StepFiles",
 ]
+
+try:
+    __version__ = version("instawell")
+except PackageNotFoundError:
+    # Fallback for dev environments where the package isn't installed yet
+    __version__ = "0.0.0+dev"

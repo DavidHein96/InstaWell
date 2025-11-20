@@ -19,7 +19,13 @@ def navbar():
                             html.A(
                                 dbc.Row(
                                     [
-                                        dbc.Col(html.I(className="fa fa-flask me-2")),
+                                        dbc.Col(
+                                            html.Img(
+                                                src="/assets/instawell-icon-256.png",
+                                                style={"height": "32px", "width": "32px"},
+                                                alt="InstaWell logo",
+                                            )
+                                        ),
                                         dbc.Col(
                                             dbc.NavbarBrand("InstaWell", className="ms-2")
                                         ),
@@ -280,16 +286,31 @@ def upload_pipeline_card():
                                     ),
                                 ],
                                 width=12,
-                                md=6,
+                                md=4,
                                 className="mb-3",
                             ),
                             dbc.Col(
                                 [
-                                    html.Label("Separator", className="fw-bold"),
+                                    html.Label("Condition Separator", className="fw-bold"),
                                     dbc.Input(
                                         id="separator-input",
-                                        placeholder="_",
-                                        value="_",
+                                        placeholder="|",
+                                        value="|",
+                                        type="text",
+                                        maxLength=1,
+                                    ),
+                                ],
+                                width=12,
+                                md=2,
+                                className="mb-3",
+                            ),
+                            dbc.Col(
+                                [
+                                    html.Label("Missing Condition Placeholder", className="fw-bold"),
+                                    dbc.Input(
+                                        id="empty-placeholder-input",
+                                        placeholder="^",
+                                        value="^",
                                         type="text",
                                         maxLength=1,
                                     ),
@@ -335,11 +356,40 @@ def upload_pipeline_card():
                             ),
                         ]
                     ),
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.Label("Non-Protein Control Marker", className="fw-bold"),
+                                    dbc.Input(
+                                        id="npc-input",
+                                        placeholder="NPC",
+                                        value="NPC",
+                                        type="text",
+                                    ),
+                                ],
+                                width=12,
+                                md=4,
+                                className="mb-3",
+                            ),
+                        ]
+                    ),
                     # Buttons for two-stage workflow
                     dbc.Row(
                         [
                             dbc.Col(
                                 [
+                                    dbc.Button(
+                                        [
+                                            html.I(className="fa fa-clipboard-check me-2"),
+                                            "Validate Layout",
+                                        ],
+                                        id="validate-layout-btn",
+                                        color="secondary",
+                                        size="lg",
+                                        disabled=True,
+                                        className="me-2",
+                                    ),
                                     dbc.Button(
                                         [
                                             html.I(className="fa fa-cog me-2"),
@@ -361,6 +411,7 @@ def upload_pipeline_card():
                                         size="lg",
                                         disabled=True,
                                     ),
+                                    html.Div(id="layout-validation-status", className="mt-2"),
                                     html.Div(id="setup-status", className="mt-2"),
                                     html.Div(id="pipeline-status", className="mt-2"),
                                 ],

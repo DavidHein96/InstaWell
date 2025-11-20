@@ -24,12 +24,27 @@ def _load_data(ctx: ExperimentContext) -> pd.DataFrame:
 
 def calculate_derivative(ctx: ExperimentContext) -> None:
     """
-    _summary_
+    Compute the negative derivative of each min/max scaled trace with respect to
+    temperature and store both wide and long representations.
 
     Parameters
     ----------
     ctx : ExperimentContext
-        _description_
+        Experiment context that has already run background subtraction, since the
+        derivative is calculated off ``04_bg_subtracted_data.csv``.
+
+    Side Effects
+    ------------
+    - Reads ``04_bg_subtracted_data.csv`` and
+      ``04_bg_subtracted_data_long.csv`` (for metadata merge).
+    - Writes ``06_derivative_data.csv`` and ``06_derivative_data_long.csv``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the background-subtracted wide file is missing.
+    ValueError
+        If the first column of the wide data is not ``Temperature``.
     """
     if ctx.log_to_file:
         setup_experiment_logging(

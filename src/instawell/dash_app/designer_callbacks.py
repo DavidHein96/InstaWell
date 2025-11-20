@@ -2,19 +2,16 @@
 Callbacks for the layout designer.
 """
 
-import io
-from typing import List
-
 import pandas as pd
 from dash import Input, Output, State, html, no_update
 from dash.exceptions import PreventUpdate
 
 from .designer import (
+    DESIGNER_FIELDS,
     WELL_PATTERN,
     create_plate_grid,
     get_row_labels,
     infer_plate_from_raw,
-    normalize_well,
     PLATE_TYPES,
 )
 from .utils import parse_upload
@@ -217,8 +214,11 @@ def register_designer_callbacks(app):
         if not n_clicks or not selected_wells:
             raise PreventUpdate
 
-        # Validate inputs
-        if not all([concentration, ligand, protein, buffer]):
+        ligand_clean = (ligand or "").strip()
+        protein_clean = (protein or "").strip()
+        buffer_clean = (buffer or "").strip()
+
+        if concentration is None or not ligand_clean or not protein_clean or not buffer_clean:
             raise PreventUpdate
 
         # Update state
@@ -227,10 +227,10 @@ def register_designer_callbacks(app):
 
         condition = {
             "concentration": concentration,
-            "unit": unit,
-            "ligand": ligand.strip(),
-            "protein": protein.strip(),
-            "buffer": buffer.strip(),
+            "unit": unit or "uM",
+            "ligand": ligand_clean,
+            "protein": protein_clean,
+            "buffer": buffer_clean,
         }
 
         for well in selected_wells:
@@ -282,9 +282,11 @@ def register_designer_callbacks(app):
         Output("designer-download", "data"),
         Input("designer-export-btn", "n_clicks"),
         State("designer-state", "data"),
+        State("designer-separator-input", "value"),
+        State("designer-placeholder-input", "value"),
         prevent_initial_call=True,
     )
-    def export_layout(n_clicks, state):
+    def export_layout(n_clicks, state, separator, placeholder):
         """Export layout to CSV."""
         if not n_clicks:
             raise PreventUpdate
@@ -292,6 +294,14 @@ def register_designer_callbacks(app):
         cells = state.get("cells", {})
         if not cells:
             raise PreventUpdate
+
+        sep = (separator or "|").strip() or "|"
+        if len(sep) != 1:
+            sep = "|"
+        placeholder_char = (placeholder or "^").strip() or "^"
+        if len(placeholder_char) != 1 or placeholder_char == sep:
+            placeholder_char = "^"
+        empty_mask = sep.join(placeholder_char for _ in DESIGNER_FIELDS)
 
         plate_type = state["plate_type"]
         rows, cols = PLATE_TYPES[plate_type]
@@ -305,12 +315,18 @@ def register_designer_callbacks(app):
                 well_name = f"{row_label}{col_num}"
                 if well_name in cells:
                     cond = cells[well_name]
-                    # Format: concentration_ligand_protein_buffer
-                    # e.g., "10uM_ATP_Protein1_Buffer1"
-                    condition_str = f"{cond['concentration']}{cond['unit']}_{cond['ligand']}_{cond['protein']}_{cond['buffer']}"
+                    first_field = f"{cond.get('concentration', '')}{cond.get('unit', '')}"
+                    condition_str = sep.join(
+                        [
+                            str(first_field),
+                            str(cond.get("ligand", "")),
+                            str(cond.get("protein", "")),
+                            str(cond.get("buffer", "")),
+                        ]
+                    )
                     row_data[str(col_num)] = condition_str
                 else:
-                    row_data[str(col_num)] = ""
+                    row_data[str(col_num)] = empty_mask
             data.append(row_data)
 
         df = pd.DataFrame(data)

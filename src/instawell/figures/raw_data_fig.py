@@ -21,38 +21,43 @@ def raw_figure_generator(
     use_filtered_data: bool = False,
 ) -> Generator[go.Figure, None, None]:
     """
-    Raw per-well plots with a discrete color scale.
-
-    - One chart per unique combo of all condition fields EXCEPT `series_by`.
-    - Lines are uniquely colored per well.
-    - This is used for the "raw" and "filtered" data views,
-        to inspect individual well behavior and select outliers.
+    Yield per-well raw traces grouped by all condition fields except the
+    dimension specified in ``series_by``. Each figure is a Plotly line chart with
+    a discrete color per well, allowing quick visual inspection and manual
+    filtering.
 
     Parameters
     ----------
     ctx : ExperimentContext
+        Experiment context whose ``experiment_dir`` contains either
+        ``01_raw_organized_data.csv`` or ``02_filtered_organized_data.csv``.
     save_figs : bool, optional
-        Saves figs as html files to the exp folder, you can preview them in a browser, by default False
-    html_include_plotlyjs : Literal["cdn",], optional
-        Leaving this as cdn means the html files will be small, but an internet connection is required to view them in browser, b/c the javascript needs to be loaded. Setting it to 'inline' will embed the javascript in the html file, making it larger but viewable offline, setting it to directory saves the js in a file in the plots dir, so you can open it offline but have to keep the html and js files together, by default "cdn"
+        If ``True``, each generated figure is written to the appropriate plots
+        directory under ``ctx.experiment_dir`` using
+        :func:`instawell.figures.save_figure`.
+    html_include_plotlyjs : {"cdn"}, optional
+        Passed through to Plotly's ``write_html`` when ``save_figs`` is enabled.
+        The default keeps the HTML lightweight while requiring internet access.
     series_by : str, optional
-        When making the figures, they are logically grouped by conditions, so all lines on a single figure pane have the same conditions, except for the condition selected here. For example if the conditions were concentration, protein, buffer, ligand, each pane would have the same protein, buffer, and ligand, but different concentration, by default "concentration"
+        Condition column that varies within a panel. All other condition fields
+        define the grouping key (default ``"concentration"``).
     use_filtered_data : bool, optional
-        _description_, by default False
+        If ``True``, plot the already filtered dataset (step 02). Otherwise plot
+        the ingested raw data (step 01).
 
     Yields
     ------
-    Generator[go.Figure, None, None]
-        A generator that yields Plotly Figure objects.
+    Generator[plotly.graph_objects.Figure, None, None]
+        One figure per unique combination of ``ctx.condition_fields`` other than
+        ``series_by``.
 
     Raises
     ------
     FileNotFoundError
-        If prerequisite data files are missing.
+        If the required CSV (raw or filtered) is missing.
     ValueError
-        If required columns are missing from the data (indicates data integrity issues).
-    ValueError
-        If the `series_by` column is not found in the data.
+        If key columns such as ``Temperature``, ``well``, ``value``, ``unqcond``,
+        or ``series_by`` are absent, indicating corrupted input.
     """
 
     if use_filtered_data:

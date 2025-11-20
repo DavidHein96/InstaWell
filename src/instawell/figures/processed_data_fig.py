@@ -63,17 +63,40 @@ def processed_figure_generator(
     color_scale_mapping: str = "Thermal",
 ):
     """
-    Generates Plotly figures for the averaged data with dynamic grouping and color scales.
+    Render grouped line figures for any of the processed long-format datasets
+    (averaged, background subtracted, min/max scaled, or derivative).
 
-    This function groups data by all condition fields except for 'concentration',
-    creating a separate plot for each experimental condition. Within each plot,
-    lines are colored by concentration using a sequential color scale.
+    Parameters
+    ----------
+    ctx : ExperimentContext
+        Experiment context with the requested ``data_source`` already generated.
+    data_source : {"averaged_data","bg_subtracted_data","min_max_scaled_data","derivative_data"}
+        Determines which long-format CSV to pull from ``ctx.experiment_dir``.
+        Each option maps to a StepFiles entry.
+    save_figs : bool, optional
+        If ``True``, save each figure to the matching plots directory.
+    html_include_plotlyjs : str, optional
+        Forwarded to Plotly's HTML exporter when saving figures.
+    series_by : str, optional
+        Condition dimension that varies within a panel; all other condition
+        fields define the grouping key (default ``"concentration"``).
+    color_scale_mapping : str, optional
+        Name of the Plotly continuous color scale used to derive the discrete
+        palette (default ``"Thermal"``).
 
-    Args:
-        ctx: An ExperimentContext object containing experiment details.
-        save_figs: If True, saves the figures to disk. Defaults to False.
-        html_include_plotlyjs: How to include Plotly.js in saved HTML files.
-        color_continuous_scale: The Plotly color scale to use for concentration.
+    Yields
+    ------
+    Generator[plotly.graph_objects.Figure, None, None]
+        One figure per unique combination of condition fields other than
+        ``series_by``. Each figure contains lines grouped by ``unqcond``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the requested ``data_source`` CSV is missing.
+    ValueError
+        If condition fields aren't present in the data or ``series_by`` is not a
+        valid column.
     """
 
     long_data_path, plot_dir_enum = _map_data_source(ctx=ctx, data_source=data_source)

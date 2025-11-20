@@ -31,23 +31,28 @@ def _load_data(ctx: ExperimentContext, dims: list[str]) -> tuple[pd.DataFrame, p
 
 def subtract_background(ctx: ExperimentContext) -> None:
     """
-    _summary_
+    Subtract the non-protein control (NPC) trace from each matching protein trace
+    and drop NPC rows from the dataset.
 
     Parameters
     ----------
     ctx : ExperimentContext
-        _description_
+        Experiment context with access to averaged wide/long data and the
+        configured ``non_protein_control_marker``.
+
+    Side Effects
+    ------------
+    - Reads ``03_averaged_data.csv`` and ``03_averaged_data_long.csv``.
+    - Writes ``04_bg_subtracted_data.csv`` (wide) and
+      ``04_bg_subtracted_data_long.csv`` (long).
 
     Raises
     ------
-    ValueError
-        _description_
     FileNotFoundError
-        _description_
-    FileNotFoundError
-        _description_
+        If either averaged data file is missing.
     ValueError
-        _description_
+        If required columns are absent or ``protein`` is not part of the
+        configured condition fields.
     """
     if ctx.log_to_file:
         setup_experiment_logging(

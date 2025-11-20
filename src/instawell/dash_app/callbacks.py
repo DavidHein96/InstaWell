@@ -2,6 +2,7 @@
 Dash callbacks for user interactions.
 """
 
+import tempfile
 import traceback
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from instawell import (
     setup_experiment,
     subtract_background,
 )
+from instawell.core.parser import parse_condition_string
 from instawell.figures.min_temp_fig import min_temp_figure_generator
 from instawell.figures.processed_data_fig import processed_figure_generator
 from instawell.figures.raw_data_fig import raw_figure_generator
@@ -376,15 +378,17 @@ def register_callbacks(app):
 
     @app.callback(
         Output("setup-ingest-btn", "disabled"),
+        Output("validate-layout-btn", "disabled"),
         Input("raw-data-store", "data"),
         Input("layout-data-store", "data"),
         Input("experiment-name-input", "value"),
     )
     def enable_setup_button(raw_data, layout_data, exp_name):
-        """Enable setup button when all required inputs are present."""
-        if raw_data and layout_data and exp_name and exp_name.strip():
-            return False
-        return True
+        """Enable buttons when required inputs are present."""
+        has_uploads = bool(raw_data) and bool(layout_data)
+        setup_disabled = not (has_uploads and exp_name and exp_name.strip())
+        validate_disabled = not has_uploads
+        return setup_disabled, validate_disabled
 
     @app.callback(
         Output("run-pipeline-btn", "disabled"),
@@ -393,6 +397,134 @@ def register_callbacks(app):
     def enable_pipeline_button(setup_complete):
         """Enable pipeline button only after setup/ingest is complete."""
         return not setup_complete
+
+    @app.callback(
+        Output("layout-validation-status", "children"),
+        Input("validate-layout-btn", "n_clicks"),
+        State("raw-data-store", "data"),
+        State("layout-data-store", "data"),
+        State("separator-input", "value"),
+        State("fields-input", "value"),
+        State("empty-placeholder-input", "value"),
+        State("temp-col-input", "value"),
+        prevent_initial_call=True,
+    )
+    def validate_layout(
+        n_clicks,
+        raw_data,
+        layout_data,
+        separator,
+        fields_str,
+        empty_placeholder,
+        temperature_column,
+    ):
+        """Validate uploaded raw/layout files against provided parsing settings."""
+        if not n_clicks:
+            raise PreventUpdate
+
+        if not raw_data or not layout_data:
+            return html.Div(
+                [
+                    html.I(className="fa fa-exclamation-triangle me-2"),
+                    "Upload both raw and layout CSV files before validating.",
+                ],
+                className="alert alert-warning",
+            )
+
+        try:
+            fields = tuple(f.strip() for f in fields_str.split(",") if f.strip())
+            if not fields:
+                raise ValueError("Field order cannot be empty.")
+            if not fields:
+                raise ValueError("Field order cannot be empty.")
+            if not separator or len(separator) != 1:
+                raise ValueError("Condition separator must be exactly one character.")
+            if not empty_placeholder or len(empty_placeholder) != 1:
+                raise ValueError("Missing condition placeholder must be exactly one character.")
+            if separator == empty_placeholder:
+                raise ValueError("Separator and placeholder must be different characters.")
+
+            layout_df = pd.DataFrame(layout_data)
+            raw_df = pd.DataFrame(raw_data)
+
+            temp_col = (temperature_column or "Temperature").strip()
+            if temp_col not in raw_df.columns:
+                match = next((c for c in raw_df.columns if c.lower() == temp_col.lower()), None)
+                if match:
+                    temp_col = match
+                else:
+                    raise ValueError(f"Raw data is missing temperature column '{temp_col}'.")
+
+            well_cols = [c for c in layout_df.columns if c.lower().startswith("well")]
+            if not well_cols:
+                raise ValueError("Layout file must contain a column starting with 'Well'.")
+            well_col = well_cols[0]
+
+            mask = separator.join(empty_placeholder for _ in fields)
+            errors: list[str] = []
+            unique_conditions = set()
+
+            for _, row in layout_df.iterrows():
+                well_label = str(row[well_col]).strip()
+                for col in layout_df.columns:
+                    if col == well_col:
+                        continue
+                    val = row[col]
+                    if pd.isna(val):
+                        continue
+                    condition_str = str(val).strip()
+                    if not condition_str or condition_str == mask:
+                        continue
+                    try:
+                        parse_condition_string(
+                            condition_str,
+                            delimiter=separator,
+                            fields=fields,
+                        )
+                        unique_conditions.add(condition_str)
+                    except ValueError as exc:
+                        errors.append(f"{well_label}{col}: {exc}")
+
+            if errors:
+                preview = html.Ul(
+                    [html.Li(err) for err in errors[:5]],
+                    className="mb-0",
+                )
+                children = [
+                    html.Div(
+                        [
+                            html.I(className="fa fa-exclamation-triangle me-2"),
+                            "Layout validation failed. Fix the issues below:",
+                        ],
+                        className="alert alert-danger mb-2",
+                    ),
+                    preview,
+                ]
+                if len(errors) > 5:
+                    children.append(
+                        html.Small(
+                            f"+{len(errors) - 5} more issues",
+                            className="text-muted",
+                        )
+                    )
+                return html.Div(children)
+
+            num_wells = len([c for c in raw_df.columns if c != temp_col])
+            return html.Div(
+                [
+                    html.I(className="fa fa-check-circle me-2"),
+                    f"Validation successful! Parsed {len(unique_conditions)} conditions across {num_wells} wells.",
+                ],
+                className="alert alert-success",
+            )
+        except Exception as exc:
+            return html.Div(
+                [
+                    html.I(className="fa fa-exclamation-triangle me-2"),
+                    f"Validation error: {exc}",
+                ],
+                className="alert alert-danger",
+            )
 
     @app.callback(
         Output("setup-status", "children"),
@@ -405,42 +537,58 @@ def register_callbacks(app):
         State("experiment-name-input", "value"),
         State("separator-input", "value"),
         State("fields-input", "value"),
+        State("empty-placeholder-input", "value"),
+        State("npc-input", "value"),
         prevent_initial_call=True,
     )
-    def setup_and_ingest(n_clicks, raw_data, layout_data, exp_name, separator, fields_str):
+    def setup_and_ingest(
+        n_clicks,
+        raw_data,
+        layout_data,
+        exp_name,
+        separator,
+        fields_str,
+        empty_placeholder,
+        npc_marker,
+    ):
         """Run setup and ingest steps only."""
         if not n_clicks:
             raise PreventUpdate
 
         try:
             # Parse fields
-            fields = tuple(f.strip() for f in fields_str.split(","))
+            fields = tuple(f.strip() for f in fields_str.split(",") if f.strip())
+            sep = (separator or "|").strip() or "|"
+            placeholder = (empty_placeholder or "^").strip() or "^"
+            npc = (npc_marker or "NPC").strip() or "NPC"
 
-            # Save data to temp files
-            temp_dir = Path("/tmp") / "instawell_uploads"
-            temp_dir.mkdir(exist_ok=True)
+            # Save data to temp files (auto-cleaned)
+            with tempfile.TemporaryDirectory(prefix="instawell_uploads_") as tmp_dir:
+                temp_dir = Path(tmp_dir)
 
-            raw_df = pd.DataFrame(raw_data)
-            layout_df = pd.DataFrame(layout_data)
+                raw_df = pd.DataFrame(raw_data)
+                layout_df = pd.DataFrame(layout_data)
 
-            raw_path = temp_dir / f"{exp_name}_raw.csv"
-            layout_path = temp_dir / f"{exp_name}_layout.csv"
+                raw_path = temp_dir / f"{exp_name}_raw.csv"
+                layout_path = temp_dir / f"{exp_name}_layout.csv"
 
-            raw_df.to_csv(raw_path, index=False)
-            layout_df.to_csv(layout_path, index=False)
+                raw_df.to_csv(raw_path, index=False)
+                layout_df.to_csv(layout_path, index=False)
 
-            # Step 1: Setup
-            ctx = setup_experiment(
-                experiment_name=exp_name,
-                raw_data_path=str(raw_path),
-                layout_data_path=str(layout_path),
-                experiments_root=str(app.experiments_root),
-                condition_separator=separator,
-                condition_fields=fields,
-            )
+                # Step 1: Setup
+                ctx = setup_experiment(
+                    experiment_name=exp_name,
+                    raw_data_path=str(raw_path),
+                    layout_data_path=str(layout_path),
+                    experiments_root=str(app.experiments_root),
+                    condition_separator=sep,
+                    condition_fields=fields,
+                    empty_condition_placeholder=placeholder,
+                    non_protein_control_marker=npc,
+                )
 
-            # Step 2: Ingest
-            ingest_data(ctx)
+                # Step 2: Ingest
+                ingest_data(ctx)
 
             return (
                 html.Div(

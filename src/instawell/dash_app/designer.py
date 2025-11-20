@@ -20,6 +20,8 @@ PLATE_TYPES = {
     "384": (16, 24),  # 16 rows, 24 columns
 }
 
+DESIGNER_FIELDS = ("concentration", "ligand", "protein", "buffer")
+
 WELL_PATTERN = re.compile(r"^\s*([A-Za-z]+)\s*0*([0-9]+)\s*$")
 
 
@@ -221,7 +223,7 @@ def create_plate_grid(
         [
             table,
             html.Small(
-                "Click and drag to select wells, then assign conditions below. Hover over filled wells to see full details.",
+                "Hold Shift and click to select multiple wells, then assign conditions below. Hover over filled wells to see full details.",
                 className="text-muted mt-2 d-block",
             ),
         ]
@@ -318,13 +320,49 @@ def designer_card():
                                             },
                                             multiple=False,
                                         ),
-                                    ],
-                                    width=12,
-                                    md=9,
-                                    className="mb-3",
-                                ),
-                            ]
-                        ),
+                                ],
+                                width=12,
+                                md=9,
+                                className="mb-3",
+                            ),
+                        ]
+                    ),
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.Label("Condition Separator", className="fw-bold"),
+                                    dbc.Input(
+                                        id="designer-separator-input",
+                                        value="|",
+                                        maxLength=1,
+                                        type="text",
+                                    ),
+                                ],
+                                width=12,
+                                md=3,
+                                className="mb-3",
+                            ),
+                            dbc.Col(
+                                [
+                                    html.Label("Missing Condition Placeholder", className="fw-bold"),
+                                    dbc.Input(
+                                        id="designer-placeholder-input",
+                                        value="^",
+                                        maxLength=1,
+                                        type="text",
+                                    ),
+                                    html.Small(
+                                        "Used for unfilled wells when exporting",
+                                        className="text-muted",
+                                    ),
+                                ],
+                                width=12,
+                                md=3,
+                                className="mb-3",
+                            ),
+                        ]
+                    ),
                         # Plate grid
                         html.Div(id="designer-grid-container", className="mb-3"),
                         html.Hr(),

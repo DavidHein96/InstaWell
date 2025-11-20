@@ -54,8 +54,34 @@ def create_app(experiments_root: str = "experiments", debug: bool = False):
 
 def main():
     """Entry point for running the Dash app standalone."""
-    app = create_app(debug=True)
-    app.run(host="127.0.0.1", port=8050, debug=True)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Launch the InstaWell Dash app.")
+    parser.add_argument(
+        "--experiments-root",
+        default="experiments",
+        help="Directory where experiments are stored (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host interface for the Dash server (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8050,
+        help="Port for the Dash server (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable Dash debug/reload mode",
+    )
+    args = parser.parse_args()
+
+    app = create_app(experiments_root=args.experiments_root, debug=args.debug)
+    app.run(host=args.host, port=args.port, debug=args.debug)
 
 
 if __name__ == "__main__":

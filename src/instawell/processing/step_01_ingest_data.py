@@ -235,24 +235,29 @@ def ingest_data(
     ctx: ExperimentContext,
 ) -> None:
     """
-    Ingests raw data and layout data using the provided experiment context.
+    Parse the uploaded raw/layout CSVs, expand condition strings, and persist the
+    canonical long-format dataset for downstream steps.
 
     Parameters
     ----------
     ctx : ExperimentContext
-        The experiment context containing configuration and paths.
+        Experiment context created by :func:`setup_experiment`. The context
+        provides the resolved paths to the copied raw/layout files, plus parsing
+        metadata such as condition fields, separator, placeholder, and temperature
+        column.
 
-    Notes
-    -----
-    01_raw_organized_data.csv : A CSV file containing the organized raw data. It is pivoted to a long format so that every row is a single measurement. This is useful for filtering and averaging later.
-    experiment_info.json : file containing details about unique conditions and replicates.
+    Side Effects
+    ------------
+    - Writes ``01_raw_organized_data.csv`` (long-form, one measurement per row).
+    - Writes ``experiment_info.json`` describing each unique condition +
+      replicate mapping.
 
     Raises
     ------
-    - FileNotFoundError
-        If the raw data or layout data files are not found.
-    - ValueError
-        If the temperature column is not found in the raw data.
+    FileNotFoundError
+        If either the raw data or layout CSV referenced by ``ctx`` is missing.
+    ValueError
+        If the configured temperature column cannot be found/normalized.
     """
 
     if ctx.log_to_file:

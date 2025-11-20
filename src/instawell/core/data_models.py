@@ -51,28 +51,7 @@ class Replicate(BaseModel):
 
 class UniqueCondition(BaseModel):
     """
-    Represents a unique experimental condition with its replicates.
-
-    A condition is defined by the combination of concentration, ligand,
-    protein, and buffer. Multiple wells (replicates) can share the same
-    condition.
-
-    Attributes:
-        full_name: Full condition string (e.g., '500uM_ATP_Protein1_Buffer1')
-        concentration: Concentration value with units (e.g., '500uM')
-        ligand_name: Name of the ligand being tested
-        protein_name: Name of the target protein
-        buffer_condition: Buffer composition identifier
-        replicates: List of Replicate objects for this condition
-
-    Example:
-        >>> condition = UniqueCondition(
-        ...     full_name="500uM_ATP_Protein1_Buffer1",
-        ...     concentration="500uM",
-        ...     ligand_name="ATP",
-        ...     protein_name="Protein1",
-        ...     buffer_condition="Buffer1",
-        ... )
+    Legacy fixed-dimension condition.
     """
 
     full_name: str = ""
@@ -95,35 +74,3 @@ class Condition(BaseModel):
     condition_fields: tuple[str, ...] = ("concentration", "ligand", "protein", "buffer")
     dimensions: dict[str, str] = Field(default_factory=dict)
     replicates: List[Replicate] = Field(default_factory=list)
-
-    # Optional: enforce a required/allowed set (can be injected from config)
-
-
-#     _required_keys: set[str] = {"concentration", "ligand", "protein", "buffer"}
-#     _allowed_keys: Optional[set[str]] = None  # or set([...]) to enforce a whitelist
-
-#     @field_validator("dimensions")
-#     @classmethod
-#     def check_required_and_allowed(cls, dims: Dict[str, str]):
-#         missing = cls._required_keys - set(dims)
-#         if missing:
-#             raise ValueError(f"Missing required dimension keys: {sorted(missing)}")
-#         if cls._allowed_keys is not None:
-#             extra = set(dims) - cls._allowed_keys
-#             if extra:
-#                 raise ValueError(f"Disallowed dimension keys: {sorted(extra)}")
-#         return dims
-
-#     @field_validator("full_name", mode="before")
-#     @classmethod
-#     def compute_full_name(cls, v, info):
-#         # Build a stable, readable name from the dimensions.
-#         dims: Dict[str, str] = info.data.get("dimensions", {})  # already validated
-#         if not dims:
-#             return v or ""
-#         # fixed order for reproducibility; fall back to alpha if not all are present
-#         order: Iterable[str] = ["concentration", "ligand", "protein", "buffer"] + sorted(
-#             set(dims) - {"concentration", "ligand", "protein", "buffer"}
-#         )
-#         parts = [f"{k}={dims[k]}" for k in order if k in dims]
-#         return "|".join(parts)

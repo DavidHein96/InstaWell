@@ -1,20 +1,32 @@
 [build-system]
-requires = ["hatchling", "wheel"]
+requires = ["hatchling>=1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "instawell"
-version = "0.3.0.dev3"
-description = "Nice tools for plotting and analyzing thermal shift assay wells"
+version = "0.3.0b1"
+description = "Nice tools for plotting and analyzing thermal shift assay data"
+keywords = [
+    "thermal shift assay",
+    "TSA",
+    "Differential Scanning Fluorimetry",
+    "DSF",
+]
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "David Hein", email = "davidhein67@gmail.com" }]
-license-files = ["LICENSE"]
+maintainers = [{ name = "David Hein" }]
+license = { file = "LICENSE" }
 classifiers = [
+    "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
-    "Development Status :: 2 - Pre-Alpha",
     "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Healthcare Industry",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Visualization",
+
 ]
 
 dependencies = [
@@ -25,34 +37,30 @@ dependencies = [
     "scipy>=1.9.0,<2.0",
 ]
 
+[project.optional-dependencies]
+notebook = ["ipywidgets>=7.6.0,<9.0", "notebook>=6.4.0,<8.0"]
+dash = ["dash>=3.0.4,<4.0", "dash-bootstrap-components>=2.0.0"]
+dev = ["mypy>=1.17.1", "pre-commit>=4.3.0", "ruff>=0.12.8"]
+docs = ["mkdocs>=1.6.0"]
+
+[dependency-groups]
+jupyter = ["jupyter>=1.1.1"]
+test = ["pytest>=8.4.2", "pytest-cov>=7.0.0"]
+audit = ["bandit>=1.8.6", "pip-audit>=2.9.0"]
+build = ["hatchling>=1.27.0", "twine>=6.1.0"]
+dashdev = ["dash>=3.2.0,<4.0", "dash-bootstrap-components>=2.0.4"]
+types = ["pandas-stubs", "scipy-stubs"]
+
 [project.scripts]
 instawell = "instawell.cli:main"
 instawell-dash = "instawell.dash_app.app:main"
 
-[project.optional-dependencies]
-notebook = ["ipywidgets>=7.6.0,<9.0", "notebook>=6.4.0,<8.0"]
-dev = [
-    "bandit>=1.8.6",
-    "datamodel-code-generator[http]>=0.32.0",
-    "mypy>=1.17.1",
-    "pip-audit>=2.9.0",
-    "pre-commit>=4.3.0",
-    "ruff>=0.12.8",
-    "types-requests>=2.32.4.20250809",
-]
-test = ["pytest>=8.4.1"]
-notebooks = ["jupyter>=1.1.1"]
-build = ["hatchling>=1.27.0", "twine>=6.1.0"]
-dash = ["dash>=2.14.0", "dash-bootstrap-components>=1.5.0"]
-testing = ["pytest>=8.4.2", "pytest-cov>=7.0.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/instawell"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "src/instawell/py.typed" = "instawell/py.typed"
-# [tool.setuptools.packages.find]
-# where = ["src"]
 
 
 [tool.ruff]
@@ -118,10 +126,10 @@ filterwarnings = [
     "ignore::DeprecationWarning",
 ]
 
-[dependency-groups]
-test = ["pytest>=8.4.2", "pytest-cov>=7.0.0"]
-
 
 [project.urls]
 homepage = "https://github.com/DavidHein96/InstaWell"
-# repository = ""
+Documentation = "https://github.com/DavidHein96/InstaWell#readme"
+Changelog = "https://github.com/DavidHein96/InstaWell/blob/dev/CHANGELOG.md"
+Source = "https://github.com/DavidHein96/InstaWell"
+Issues = "https://github.com/DavidHein96/InstaWell/issues"
