@@ -12,6 +12,36 @@ Tools for organizing, processing, and visualizing thermal shift assay (TSA) data
 
 "Man I hate copying and pasting stuff in excel... I wish I could very quickly get from raw TSA data + layout to dose-response curves and Tm values without a million clicks."
 
+## Documentation
+
+The full documentation now lives in the MkDocs site under `docs/`. To browse locally:
+
+```bash
+pip install 'instawell[docs]'
+mkdocs serve
+```
+
+Key pages:
+
+- `docs/index.md` – overview & quick start
+- `docs/pipeline.md` – numbered CSV pipeline guide
+- `docs/dash_app.md` – Dash workflow, layout designer, and validation tips
+
+## Dash App (Experimental)
+
+Prefer a UI? Install the Dash extra and launch the bundled server:
+
+```bash
+pip install 'instawell[dash]'
+instawell-dash --host 0.0.0.0 --port 8050 --experiments-root experiments
+```
+
+You can tweak `--host`, `--port`, `--experiments-root`, and `--debug`. The app
+exposes layout upload/validation, well filtering, and figure browsing directly
+in the browser. Keep in mind the UI is still stabilizing—if something looks off,
+rerun the numbered pipeline functions from Python for production results. See
+[`docs/dash_app.md`](docs/dash_app.md) for screenshots and workflow tips.
+
 ## Features
 
 * **Flexible layouts** → parse arbitrary condition fields (e.g., `concentration | ligand | protein | buffer`)
@@ -234,9 +264,20 @@ Common fields:
 
 ## Development Notes
 
-This tool is currently best suited for use from a jupyter notebook, but a CLI and Dash app are planned. The dash app will be very helpful as it will greatly simplify creating a layout file from plate maps.
+This tool is currently best suited for use from a jupyter notebook, but a CLI and Dash app are in development. The dash app will be very helpful as it will greatly simplify creating a layout file from plate maps.
 
-Another TODO is to fully finish implementing the fuzz testing suite for the various data processing functions.
+**TODOs**
+
+- Finish fully finish implementing the fuzz testing suite for the various data processing functions.
+- Add more integration tests for curve fitting and end-to-end pipeline runs, as well as edge case tests for column parsing and layout handling.
+- Expand the Dash app to cover more of the pipeline steps and improve the layout designer UX.
+- Add better testing and error handling in the dash app.
+- Improve documentation coverage, especially around advanced usage and configuration options.
+- Setup github actions for CI/CD and automated testing.
+- Setup github pages for hosting the MkDocs documentation site.
+- Add more examples and tutorials in the docs.
+- Optimize performance for larger datasets, especially in the data processing functions.
+- Complete passing of most mypy type checks (or maybe try a different type checker)
 
 ## License
 

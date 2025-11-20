@@ -24,12 +24,27 @@ def _load_data(ctx: ExperimentContext) -> pd.DataFrame:
 
 def calculate_derivative(ctx: ExperimentContext) -> None:
     """
-    _summary_
+    Compute the negative derivative of each min/max scaled trace with respect to
+    temperature and store both wide and long representations.
 
     Parameters
     ----------
     ctx : ExperimentContext
-        _description_
+        Experiment context that has already run background subtraction, since the
+        derivative is calculated off ``04_bg_subtracted_data.csv``.
+
+    Side Effects
+    ------------
+    - Reads ``04_bg_subtracted_data.csv`` and
+      ``04_bg_subtracted_data_long.csv`` (for metadata merge).
+    - Writes ``06_derivative_data.csv`` and ``06_derivative_data_long.csv``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the background-subtracted wide file is missing.
+    ValueError
+        If the first column of the wide data is not ``Temperature``.
     """
     if ctx.log_to_file:
         setup_experiment_logging(
@@ -76,5 +91,13 @@ def calculate_derivative(ctx: ExperimentContext) -> None:
         value_name="value",
     )
     derivative_long_path = ctx.experiment_dir / StepFiles.DERIVATIVE_DATA_LONG.value
+    # take the columns from the bg subtracted long data, unqcond, and the condition fields
+    # and merge them into the derivative long data
+    bg_sub_long_path = ctx.experiment_dir / StepFiles.BG_SUB_DATA_LONG.value
+    bg_sub_long_data = pd.read_csv(bg_sub_long_path)
+    merge_cols = ["unqcond", *ctx.condition_fields]
+    long_data = long_data.merge(
+        bg_sub_long_data[merge_cols].drop_duplicates(), on="unqcond", how="left"
+    )
     long_data.to_csv(derivative_long_path, index=False)
     logger.info("Derivative long data saved to %s", derivative_long_path)

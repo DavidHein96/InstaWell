@@ -153,14 +153,45 @@ def min_temp_figure_generator(
     html_include_plotlyjs: str = "cdn",
 ):
     """
-    Scatter of minimum temperature vs concentration with selectable x-scale & fit.
+    Generate scatter plots of min temperature vs concentration using the
+    aggregated output from :func:`find_min_temperature`.
 
-    Modes
-    -----
-    - "linear"    : x = concentration (linear). Includes zeros. No curve fit.
-    - "log1p"     : x = log(1 + concentration). Includes zeros. No curve fit.
-    - "log10_fit" : x = log10(concentration). Excludes zeros (log axis).
-                    Overlays Prism-style 4PL fit (fit in log10; parameter logEC50).
+    Parameters
+    ----------
+    ctx : ExperimentContext
+        Experiment context containing ``07_min_temperatures.csv``.
+    panel_by : list[str] | None, optional
+        Condition fields that define a panel/group. Defaults to all condition
+        fields except ``"concentration"``.
+    mode : {"linear","log1p","log10_fit"}, optional
+        Controls the x-axis transform and whether a 4PL curve is fit:
+
+        - ``"linear"`` – raw concentration (zeros included), scatter only.
+        - ``"log1p"`` – log(1 + concentration) transform (zeros included),
+          scatter only.
+        - ``"log10_fit"`` – log10 domain (zeros excluded) with optional
+          weighted 4PL fit overlay.
+    color_scale : str, optional
+        Plotly continuous color scale name (default ``"Viridis"``).
+    weighting : {"none","1/y^2"}, optional
+        When ``mode="log10_fit"``, choose whether to pass a sigma array (1/y^2)
+        into the 4PL fit.
+    save_figs : bool, optional
+        If ``True``, persist each figure to the min-temperature plots directory.
+    html_include_plotlyjs : str, optional
+        Passed through to Plotly when saving figures.
+
+    Yields
+    ------
+    Generator[plotly.graph_objects.Figure, None, None]
+        One figure per panel, configured according to ``mode``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``07_min_temperatures.csv`` is missing from the experiment directory.
+    ValueError
+        If required columns are missing from the min temperature DataFrame.
     """
     path = ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA.value
     if not path.exists():

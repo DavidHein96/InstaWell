@@ -92,13 +92,3 @@ def slugify(s: str) -> str:
         else:
             keep.append("_")
     return "".join(keep).strip("_")
-
-
-# def load_valid_df(ctx: ExperimentContext, step_file: StepFiles, cols_to_check: list[str]|None = None) -> pd.DataFrame:
-#     long_data_path = ctx.experiment_dir / StepFiles.BG_SUB_DATA_LONG.value
-#     if not long_data_path.exists():
-#         raise FileNotFoundError(
-#             f"Long format background subtracted data file not found: {long_data_path}"
-#         )
-#     long_data = pd.read_csv(long_data_path)
-#     return long_data

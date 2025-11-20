@@ -2,19 +2,16 @@
 Callbacks for the layout designer.
 """
 
-import io
-from typing import List
-
 import pandas as pd
 from dash import Input, Output, State, html, no_update
 from dash.exceptions import PreventUpdate
 
 from .designer import (
+    DESIGNER_FIELDS,
     WELL_PATTERN,
     create_plate_grid,
     get_row_labels,
     infer_plate_from_raw,
-    normalize_well,
     PLATE_TYPES,
 )
 from .utils import parse_upload
@@ -26,6 +23,8 @@ def register_designer_callbacks(app):
     @app.callback(
         Output("designer-collapse", "is_open"),
         Output("designer-toggle-btn", "children"),
+        Output("designer-toggle-btn", "color"),
+        Output("designer-toggle-btn", "outline"),
         Input("designer-toggle-btn", "n_clicks"),
         State("designer-collapse", "is_open"),
         prevent_initial_call=True,
@@ -36,8 +35,17 @@ def register_designer_callbacks(app):
             raise PreventUpdate
 
         new_state = not is_open
-        button_text = "Hide Designer" if new_state else "Show Designer"
-        return new_state, button_text
+
+        if new_state:  # Opening designer
+            button_text = "Hide Designer"
+            button_color = "secondary"
+            button_outline = True
+        else:  # Closing designer
+            button_text = "Show Designer"
+            button_color = "primary"
+            button_outline = False
+
+        return new_state, button_text, button_color, button_outline
 
     @app.callback(
         Output("designer-state", "data", allow_duplicate=True),
@@ -129,12 +137,14 @@ def register_designer_callbacks(app):
         Output("designer-selected-wells-display", "children"),
         Output("designer-assign-btn", "disabled"),
         Output("designer-clear-btn", "disabled"),
+        Output("designer-copy-btn", "disabled"),
         Input("designer-selected-wells", "data"),
+        State("designer-state", "data"),
     )
-    def update_selection_display(selected_wells):
+    def update_selection_display(selected_wells, state):
         """Display selected wells and enable/disable buttons."""
         if not selected_wells:
-            return "No wells selected", True, True
+            return "No wells selected", True, True, True
 
         wells_str = ", ".join(selected_wells)
         display = html.Span(
@@ -143,14 +153,50 @@ def register_designer_callbacks(app):
                 html.Span(wells_str, className="font-monospace"),
             ]
         )
-        return display, False, False
+
+        # Enable copy button only if exactly one filled well is selected
+        cells = state.get("cells", {})
+        copy_enabled = len(selected_wells) == 1 and selected_wells[0] in cells
+
+        return display, False, False, not copy_enabled
 
     @app.callback(
-        Output("designer-state", "data", allow_duplicate=True),
         Output("designer-concentration", "value"),
+        Output("designer-unit", "value"),
         Output("designer-ligand", "value"),
         Output("designer-protein", "value"),
         Output("designer-buffer", "value"),
+        Input("designer-copy-btn", "n_clicks"),
+        State("designer-selected-wells", "data"),
+        State("designer-state", "data"),
+        prevent_initial_call=True,
+    )
+    def copy_condition_to_form(n_clicks, selected_wells, state):
+        """Copy condition from selected well to form fields."""
+        if not n_clicks or not selected_wells or len(selected_wells) != 1:
+            raise PreventUpdate
+
+        well = selected_wells[0]
+        cells = state.get("cells", {})
+
+        if well not in cells:
+            raise PreventUpdate
+
+        cond = cells[well]
+        return (
+            cond.get("concentration"),
+            cond.get("unit", "uM"),
+            cond.get("ligand", ""),
+            cond.get("protein", ""),
+            cond.get("buffer", ""),
+        )
+
+    @app.callback(
+        Output("designer-state", "data", allow_duplicate=True),
+        Output("designer-concentration", "value", allow_duplicate=True),
+        Output("designer-ligand", "value", allow_duplicate=True),
+        Output("designer-protein", "value", allow_duplicate=True),
+        Output("designer-buffer", "value", allow_duplicate=True),
         Input("designer-assign-btn", "n_clicks"),
         State("designer-selected-wells", "data"),
         State("designer-concentration", "value"),
@@ -168,8 +214,11 @@ def register_designer_callbacks(app):
         if not n_clicks or not selected_wells:
             raise PreventUpdate
 
-        # Validate inputs
-        if not all([concentration, ligand, protein, buffer]):
+        ligand_clean = (ligand or "").strip()
+        protein_clean = (protein or "").strip()
+        buffer_clean = (buffer or "").strip()
+
+        if concentration is None or not ligand_clean or not protein_clean or not buffer_clean:
             raise PreventUpdate
 
         # Update state
@@ -178,10 +227,10 @@ def register_designer_callbacks(app):
 
         condition = {
             "concentration": concentration,
-            "unit": unit,
-            "ligand": ligand.strip(),
-            "protein": protein.strip(),
-            "buffer": buffer.strip(),
+            "unit": unit or "uM",
+            "ligand": ligand_clean,
+            "protein": protein_clean,
+            "buffer": buffer_clean,
         }
 
         for well in selected_wells:
@@ -233,9 +282,11 @@ def register_designer_callbacks(app):
         Output("designer-download", "data"),
         Input("designer-export-btn", "n_clicks"),
         State("designer-state", "data"),
+        State("designer-separator-input", "value"),
+        State("designer-placeholder-input", "value"),
         prevent_initial_call=True,
     )
-    def export_layout(n_clicks, state):
+    def export_layout(n_clicks, state, separator, placeholder):
         """Export layout to CSV."""
         if not n_clicks:
             raise PreventUpdate
@@ -243,6 +294,14 @@ def register_designer_callbacks(app):
         cells = state.get("cells", {})
         if not cells:
             raise PreventUpdate
+
+        sep = (separator or "|").strip() or "|"
+        if len(sep) != 1:
+            sep = "|"
+        placeholder_char = (placeholder or "^").strip() or "^"
+        if len(placeholder_char) != 1 or placeholder_char == sep:
+            placeholder_char = "^"
+        empty_mask = sep.join(placeholder_char for _ in DESIGNER_FIELDS)
 
         plate_type = state["plate_type"]
         rows, cols = PLATE_TYPES[plate_type]
@@ -256,12 +315,18 @@ def register_designer_callbacks(app):
                 well_name = f"{row_label}{col_num}"
                 if well_name in cells:
                     cond = cells[well_name]
-                    # Format: concentration_ligand_protein_buffer
-                    # e.g., "10uM_ATP_Protein1_Buffer1"
-                    condition_str = f"{cond['concentration']}{cond['unit']}_{cond['ligand']}_{cond['protein']}_{cond['buffer']}"
+                    first_field = f"{cond.get('concentration', '')}{cond.get('unit', '')}"
+                    condition_str = sep.join(
+                        [
+                            str(first_field),
+                            str(cond.get("ligand", "")),
+                            str(cond.get("protein", "")),
+                            str(cond.get("buffer", "")),
+                        ]
+                    )
                     row_data[str(col_num)] = condition_str
                 else:
-                    row_data[str(col_num)] = ""
+                    row_data[str(col_num)] = empty_mask
             data.append(row_data)
 
         df = pd.DataFrame(data)

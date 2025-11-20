@@ -22,24 +22,27 @@ def _load_data(ctx: ExperimentContext) -> pd.DataFrame:
 
 def min_max_scale(ctx: ExperimentContext) -> None:
     """
-    _summary_
+    Scale each background-subtracted trace to the [0, 1] range to aid
+    shape-comparison QC.
 
     Parameters
     ----------
     ctx : ExperimentContext
-        _description_
+        Experiment context pointing at background-subtracted data.
 
-    Returns
-    -------
-    _type_
-        _description_
+    Side Effects
+    ------------
+    - Reads ``04_bg_subtracted_data_long.csv`` (and optionally the wide file to
+      preserve column order).
+    - Writes ``05_min_max_scaled_data_long.csv`` and
+      ``05_min_max_scaled_data.csv``.
 
     Raises
     ------
     FileNotFoundError
-        _description_
+        If the background-subtracted long file is missing.
     ValueError
-        _description_
+        If any scaled column falls outside [0, 1], indicating bad input.
     """
     if ctx.log_to_file:
         setup_experiment_logging(

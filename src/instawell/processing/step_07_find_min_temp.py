@@ -13,22 +13,26 @@ logger = logging.getLogger(__name__)
 
 def find_min_temperature(ctx: ExperimentContext) -> None:
     """
-    Finds the temperature at the minimum of the derivative curve for each condition.
-
-    This step uses the long-format derivative data. It groups the data by each
-    unique condition, finds the index of the minimum derivative value within each
-    group, and retrieves the corresponding temperature. The final output is a table
-    mapping each condition to its calculated minimum temperature.
+    Reduce derivative traces to a single temperature per condition by finding the
+    minimum derivative (Tm-like point).
 
     Parameters
     ----------
     ctx : ExperimentContext
-        _description_
+        Experiment context resulting from :func:`calculate_derivative`. The
+        derivative long file is required because it contains both the numeric
+        derivative values and the original condition metadata.
+
+    Side Effects
+    ------------
+    - Reads ``06_derivative_data_long.csv``.
+    - Writes ``07_min_temperatures.csv`` with ``unqcond``, ``min_temperature``,
+      numeric concentration column, and individual condition fields.
 
     Raises
     ------
     FileNotFoundError
-        _description_
+        If the derivative long file has not been generated.
     """
     if ctx.log_to_file:
         setup_experiment_logging(

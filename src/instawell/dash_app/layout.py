@@ -19,7 +19,13 @@ def navbar():
                             html.A(
                                 dbc.Row(
                                     [
-                                        dbc.Col(html.I(className="fa fa-flask me-2")),
+                                        dbc.Col(
+                                            html.Img(
+                                                src="/assets/instawell-icon-256.png",
+                                                style={"height": "32px", "width": "32px"},
+                                                alt="InstaWell logo",
+                                            )
+                                        ),
                                         dbc.Col(
                                             dbc.NavbarBrand("InstaWell", className="ms-2")
                                         ),
@@ -72,10 +78,22 @@ def experiment_browser_card():
                                         placeholder="Select an experiment to view...",
                                         className="mb-2",
                                     ),
-                                    dbc.Button(
-                                        [html.I(className="fa fa-sync me-2"), "Refresh"],
-                                        id="refresh-experiments-btn",
-                                        color="secondary",
+                                    dbc.ButtonGroup(
+                                        [
+                                            dbc.Button(
+                                                [html.I(className="fa fa-sync me-2"), "Refresh"],
+                                                id="refresh-experiments-btn",
+                                                color="secondary",
+                                                size="sm",
+                                            ),
+                                            dbc.Button(
+                                                [html.I(className="fa fa-times me-2"), "Clear"],
+                                                id="clear-experiment-btn",
+                                                color="warning",
+                                                size="sm",
+                                                outline=False,
+                                            ),
+                                        ],
                                         size="sm",
                                     ),
                                 ],
@@ -165,12 +183,31 @@ def upload_pipeline_card():
     return dbc.Card(
         [
             dbc.CardHeader(
-                html.H5(
-                    [html.I(className="fa fa-upload me-2"), "New Experiment"],
-                    className="mb-0",
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            html.H5(
+                                [html.I(className="fa fa-upload me-2"), "New Experiment"],
+                                className="mb-0",
+                            ),
+                            width="auto",
+                        ),
+                        dbc.Col(
+                            dbc.Button(
+                                "Hide New Experiment",
+                                id="new-experiment-toggle-btn",
+                                color="secondary",
+                                size="sm",
+                                outline=True,
+                            ),
+                            className="text-end",
+                        ),
+                    ],
+                    align="center",
                 )
             ),
-            dbc.CardBody(
+            dbc.Collapse(
+                dbc.CardBody(
                 [
                     # Upload section
                     dbc.Row(
@@ -249,16 +286,31 @@ def upload_pipeline_card():
                                     ),
                                 ],
                                 width=12,
-                                md=6,
+                                md=4,
                                 className="mb-3",
                             ),
                             dbc.Col(
                                 [
-                                    html.Label("Separator", className="fw-bold"),
+                                    html.Label("Condition Separator", className="fw-bold"),
                                     dbc.Input(
                                         id="separator-input",
-                                        placeholder="_",
-                                        value="_",
+                                        placeholder="|",
+                                        value="|",
+                                        type="text",
+                                        maxLength=1,
+                                    ),
+                                ],
+                                width=12,
+                                md=2,
+                                className="mb-3",
+                            ),
+                            dbc.Col(
+                                [
+                                    html.Label("Missing Condition Placeholder", className="fw-bold"),
+                                    dbc.Input(
+                                        id="empty-placeholder-input",
+                                        placeholder="^",
+                                        value="^",
                                         type="text",
                                         maxLength=1,
                                     ),
@@ -304,21 +356,63 @@ def upload_pipeline_card():
                             ),
                         ]
                     ),
-                    # Run pipeline button
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.Label("Non-Protein Control Marker", className="fw-bold"),
+                                    dbc.Input(
+                                        id="npc-input",
+                                        placeholder="NPC",
+                                        value="NPC",
+                                        type="text",
+                                    ),
+                                ],
+                                width=12,
+                                md=4,
+                                className="mb-3",
+                            ),
+                        ]
+                    ),
+                    # Buttons for two-stage workflow
                     dbc.Row(
                         [
                             dbc.Col(
                                 [
                                     dbc.Button(
                                         [
+                                            html.I(className="fa fa-clipboard-check me-2"),
+                                            "Validate Layout",
+                                        ],
+                                        id="validate-layout-btn",
+                                        color="secondary",
+                                        size="lg",
+                                        disabled=True,
+                                        className="me-2",
+                                    ),
+                                    dbc.Button(
+                                        [
+                                            html.I(className="fa fa-cog me-2"),
+                                            "Setup & View Raw Data",
+                                        ],
+                                        id="setup-ingest-btn",
+                                        color="info",
+                                        size="lg",
+                                        disabled=True,
+                                        className="me-2",
+                                    ),
+                                    dbc.Button(
+                                        [
                                             html.I(className="fa fa-play me-2"),
-                                            "Run Pipeline",
+                                            "Run Full Pipeline",
                                         ],
                                         id="run-pipeline-btn",
                                         color="primary",
                                         size="lg",
                                         disabled=True,
                                     ),
+                                    html.Div(id="layout-validation-status", className="mt-2"),
+                                    html.Div(id="setup-status", className="mt-2"),
                                     html.Div(id="pipeline-status", className="mt-2"),
                                 ],
                                 width=12,
@@ -326,6 +420,9 @@ def upload_pipeline_card():
                         ]
                     ),
                 ]
+                ),
+                id="new-experiment-collapse",
+                is_open=True,
             ),
         ],
         className="mb-4",
@@ -438,8 +535,11 @@ def create_layout():
             dcc.Store(id="layout-data-store"),
             dcc.Store(id="current-experiment-store"),
             dcc.Store(id="filtered-wells-store", data=[]),  # Store filtered wells
+            dcc.Store(id="setup-complete-store", data=False),  # Track if setup/ingest done
             # UI components
             navbar(),
+            # Currently viewing banner (shows when experiment is loaded)
+            html.Div(id="current-experiment-banner"),
             experiment_browser_card(),
             designer_card(),  # Layout designer
             upload_pipeline_card(),
