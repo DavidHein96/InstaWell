@@ -499,6 +499,57 @@ def figures_card():
             ),
             dbc.CardBody(
                 [
+                    # Figure navigation controls
+                    html.Div(
+                        [
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        dbc.ButtonGroup(
+                                            [
+                                                dbc.Button(
+                                                    [html.I(className="fa fa-chevron-left")],
+                                                    id="fig-prev-btn",
+                                                    color="secondary",
+                                                    size="sm",
+                                                    outline=True,
+                                                ),
+                                                dbc.Button(
+                                                    [html.I(className="fa fa-chevron-right")],
+                                                    id="fig-next-btn",
+                                                    color="secondary",
+                                                    size="sm",
+                                                    outline=True,
+                                                ),
+                                            ],
+                                            className="me-3",
+                                        ),
+                                        width="auto",
+                                    ),
+                                    dbc.Col(
+                                        dcc.Dropdown(
+                                            id="figure-selector-dropdown",
+                                            placeholder="Select a figure...",
+                                            clearable=False,
+                                        ),
+                                        width=True,
+                                    ),
+                                    dbc.Col(
+                                        html.Div(
+                                            id="figure-counter",
+                                            className="text-muted small text-end",
+                                        ),
+                                        width="auto",
+                                    ),
+                                ],
+                                align="center",
+                                className="mb-3",
+                            ),
+                        ],
+                        id="figure-nav-controls",
+                        style={"display": "none"},  # Hidden until figures are loaded
+                    ),
+                    # Figure display area
                     dcc.Loading(
                         id="loading-figures",
                         type="default",
@@ -531,11 +582,18 @@ def create_layout():
     return dbc.Container(
         [
             # Store components for state management
-            dcc.Store(id="raw-data-store"),
-            dcc.Store(id="layout-data-store"),
+            dcc.Store(id="session-id", storage_type="session"),
+            # Stores for uploaded data references (now storing keys, not data)
+            dcc.Store(id="raw-data-store", storage_type="session"),
+            dcc.Store(id="layout-data-store", storage_type="session"),
             dcc.Store(id="current-experiment-store"),
             dcc.Store(id="filtered-wells-store", data=[]),  # Store filtered wells
             dcc.Store(id="setup-complete-store", data=False),  # Track if setup/ingest done
+            # Stores for figure navigation
+            dcc.Store(id="figures-store"),  # Store all figures and their titles
+            dcc.Store(id="current-figure-index", data=0),  # Track current figure index
+            # Store for well grid selection
+            dcc.Store(id="selected-wells-grid", data=[]),  # Track selected wells in grid
             # UI components
             navbar(),
             # Currently viewing banner (shows when experiment is loaded)

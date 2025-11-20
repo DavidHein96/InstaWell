@@ -23,6 +23,7 @@ def create_app(experiments_root: str = "experiments", debug: bool = False):
     try:
         import dash_bootstrap_components as dbc
         from dash import Dash
+        from flask_caching import Cache
     except ImportError as exc:
         message = (
             "The Instawell Dash app requires the 'dash' extra.\n"
@@ -37,6 +38,31 @@ def create_app(experiments_root: str = "experiments", debug: bool = False):
         suppress_callback_exceptions=True,
         title="InstaWell - DSF Data Analysis",
     )
+
+    # Setup server-side caching for large dataframes
+    # This prevents large data transfers between server and client
+    cache_dir = Path(".instawell-cache")
+    cache_dir.mkdir(exist_ok=True)
+
+    # Create .gitignore in cache directory to prevent committing cache files
+    gitignore_path = cache_dir / ".gitignore"
+    if not gitignore_path.exists():
+        gitignore_path.write_text(
+            "# Ignore all cache files\n*\n# Except this .gitignore\n!.gitignore\n"
+        )
+
+    cache = Cache(
+        app.server,
+        config={
+            "CACHE_TYPE": "filesystem",
+            "CACHE_DIR": str(cache_dir),
+            # Cache timeout: 24 hours (86400 seconds)
+            # This allows users to upload files and process them throughout a workday
+            # without having to re-upload if they take breaks
+            "CACHE_DEFAULT_TIMEOUT": 86400,
+        },
+    )
+    app.cache = cache
 
     # Store experiments root in app config
     app.experiments_root = Path(experiments_root)

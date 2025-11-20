@@ -84,6 +84,10 @@ build/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints
 
+# Dash app cache directory
+.instawell-cache/
+
+
 .vscode/
 all_data
 todo.md
@@ -92,3 +96,4 @@ todo.md
 publishing.md
 .pypirc
 testing.ipynb
+dev_notes/

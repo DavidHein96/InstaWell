@@ -3,12 +3,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Sequence
 from functools import wraps
-from typing import Callable, Union
+from typing import Callable, ParamSpec, Union
 
 import ipywidgets as W
 import plotly.graph_objects as go
 from IPython.display import clear_output, display
-from typing_extensions import ParamSpec
 
 from instawell.figures.min_temp_fig import min_temp_figure_generator
 from instawell.figures.processed_data_fig import processed_figure_generator
