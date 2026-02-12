@@ -1,6 +1,7 @@
 [![PyPI version](https://badge.fury.io/py/instawell.svg)](https://pypi.org/project/instawell/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![codecov](https://codecov.io/gh/DavidHein96/InstaWell/graph/badge.svg)](https://codecov.io/gh/DavidHein96/InstaWell)
 [![Jupyter-ready](https://img.shields.io/badge/jupyter-ready-orange.svg)](https://jupyter.org/)
 [![Use uv](https://img.shields.io/badge/recommended%20installer-uv-4584b6.svg)](https://docs.astral.sh/uv/)
 
