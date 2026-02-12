@@ -36,7 +36,7 @@ jupyter notebook toy_example_notebook.ipynb
 Or run programmatically:
 
 ```python
-from instawell import setup_experiment, ingest_data, filter_wells, average_accross_replicates, \
+from instawell import setup_experiment, ingest_data, filter_wells, average_across_replicates, \
                       subtract_background, calculate_derivative, find_min_temperature, calculate_curve_params
 
 ctx = setup_experiment(
@@ -49,7 +49,7 @@ ctx = setup_experiment(
 # Run the pipeline
 ingest_data(ctx)
 filter_wells(ctx, wells_to_filter=[])
-average_accross_replicates(ctx)
+average_across_replicates(ctx)
 subtract_background(ctx)
 calculate_derivative(ctx)
 find_min_temperature(ctx)

@@ -1,4 +1,4 @@
-# instawell/figures/notebook.py
+# instawell/figures/notebook_helpers.py
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Sequence
@@ -61,7 +61,7 @@ def widgetize_generator(gen_func: Callable[P, FiguresLike]) -> Callable[P, W.VBo
             help_box = W.Accordion(
                 children=[W.HTML(f"<pre style='white-space:pre-wrap'>{doc}</pre>")]
             )
-            help_box.set_title(0, f"Help: {gen_func.__name__}")
+            help_box.set_title(0, f"Help: {gen_func.__name__}")  # ty: ignore[unresolved-attribute]
             ui = W.VBox([help_box, ui])
 
         if show:
@@ -108,7 +108,7 @@ def figures_widget(figs: FiguresLike, show: bool = False) -> W.VBox:
     def render(i: int) -> None:
         with out:
             clear_output(wait=True)
-            figs[i].show()
+            figs[i].show()  # ty: ignore[unresolved-attribute]
 
     def on_idx_change(change):
         if change["name"] == "value":

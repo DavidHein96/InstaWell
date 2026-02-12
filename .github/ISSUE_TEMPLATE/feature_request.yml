@@ -1,0 +1,47 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea for InstaWell? We'd love to hear it.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of InstaWell does this relate to?
+      options:
+        - Pipeline (Python API)
+        - Dash App
+        - Jupyter Widgets
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+      description: What problem does this solve, or what workflow would it improve?
+      placeholder: "I often need to re-run just the last two pipeline steps after tweaking well filters, but currently I have to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How do you think this should work? Code snippets, UI mockups, or plain descriptions are all welcome.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds you've tried or other approaches you've thought about?
+    validations:
+      required: false

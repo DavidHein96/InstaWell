@@ -5,7 +5,6 @@ Allows users to interactively design their plate layouts by selecting wells
 and assigning conditions.
 """
 
-import re
 import string
 from typing import Dict, List, Tuple
 
@@ -13,24 +12,15 @@ import dash_bootstrap_components as dbc
 import pandas as pd
 from dash import dash_table, dcc, html
 
+from .utils import WELL_PATTERN, normalize_well
 
 # Plate configurations
 PLATE_TYPES = {
-    "96": (8, 12),   # 8 rows, 12 columns
+    "96": (8, 12),  # 8 rows, 12 columns
     "384": (16, 24),  # 16 rows, 24 columns
 }
 
 DESIGNER_FIELDS = ("concentration", "ligand", "protein", "buffer")
-
-WELL_PATTERN = re.compile(r"^\s*([A-Za-z]+)\s*0*([0-9]+)\s*$")
-
-
-def normalize_well(well_str: str) -> str:
-    """Normalize well name like 'A01' -> 'A1'."""
-    match = WELL_PATTERN.match(str(well_str))
-    if not match:
-        return str(well_str).strip()
-    return f"{match.group(1).upper()}{int(match.group(2))}"
 
 
 def get_row_labels(n_rows: int) -> List[str]:
@@ -69,10 +59,8 @@ def infer_plate_from_raw(raw_df: pd.DataFrame) -> Tuple[str, int, int, List[str]
     rows_needed = ord(max_row) - ord("A") + 1
     cols_needed = max_col
 
-    if rows_needed <= 8 and cols_needed <= 12:
-        plate_type = "96"
-    else:
-        plate_type = "384"
+    max_96_rows, max_96_cols = PLATE_TYPES["96"]
+    plate_type = "96" if rows_needed <= max_96_rows and cols_needed <= max_96_cols else "384"
 
     rows, cols = PLATE_TYPES[plate_type]
     return plate_type, rows, cols, sorted(set(wells))
@@ -81,7 +69,7 @@ def infer_plate_from_raw(raw_df: pd.DataFrame) -> Tuple[str, int, int, List[str]
 def create_plate_grid(
     plate_type: str,
     cells: Dict[str, Dict],
-    available_wells: List[str] = None,
+    available_wells: List[str] | None = None,
 ) -> html.Div:
     """
     Create an interactive plate grid using Dash DataTable.
@@ -134,7 +122,7 @@ def create_plate_grid(
     style_data_conditional = []
 
     # Style for filled cells (has condition assigned)
-    for row_idx, row_label in enumerate(row_labels):
+    for _row_idx, row_label in enumerate(row_labels):
         for col_num in range(1, cols + 1):
             well_name = f"{row_label}{col_num}"
             col_id = str(col_num)
@@ -200,12 +188,13 @@ def create_plate_grid(
             "backgroundColor": "rgb(248, 249, 250)",
             "fontWeight": "bold",
         },
-        style_data_conditional=style_data_conditional + [
+        style_data_conditional=[
+            *style_data_conditional,
             {
                 "if": {"column_id": "Well"},
                 "backgroundColor": "rgb(248, 249, 250)",
                 "fontWeight": "bold",
-            }
+            },
         ],
         css=[
             {
@@ -301,9 +290,7 @@ def designer_card():
                                             id="designer-raw-upload",
                                             children=html.Div(
                                                 [
-                                                    html.I(
-                                                        className="fa fa-file-csv me-2"
-                                                    ),
+                                                    html.I(className="fa fa-file-csv me-2"),
                                                     "Click to import wells from raw.csv",
                                                 ],
                                                 className="text-center",
@@ -320,49 +307,51 @@ def designer_card():
                                             },
                                             multiple=False,
                                         ),
-                                ],
-                                width=12,
-                                md=9,
-                                className="mb-3",
-                            ),
-                        ]
-                    ),
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    html.Label("Condition Separator", className="fw-bold"),
-                                    dbc.Input(
-                                        id="designer-separator-input",
-                                        value="|",
-                                        maxLength=1,
-                                        type="text",
-                                    ),
-                                ],
-                                width=12,
-                                md=3,
-                                className="mb-3",
-                            ),
-                            dbc.Col(
-                                [
-                                    html.Label("Missing Condition Placeholder", className="fw-bold"),
-                                    dbc.Input(
-                                        id="designer-placeholder-input",
-                                        value="^",
-                                        maxLength=1,
-                                        type="text",
-                                    ),
-                                    html.Small(
-                                        "Used for unfilled wells when exporting",
-                                        className="text-muted",
-                                    ),
-                                ],
-                                width=12,
-                                md=3,
-                                className="mb-3",
-                            ),
-                        ]
-                    ),
+                                    ],
+                                    width=12,
+                                    md=9,
+                                    className="mb-3",
+                                ),
+                            ]
+                        ),
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    [
+                                        html.Label("Condition Separator", className="fw-bold"),
+                                        dbc.Input(
+                                            id="designer-separator-input",
+                                            value="|",
+                                            maxLength=1,
+                                            type="text",
+                                        ),
+                                    ],
+                                    width=12,
+                                    md=3,
+                                    className="mb-3",
+                                ),
+                                dbc.Col(
+                                    [
+                                        html.Label(
+                                            "Missing Condition Placeholder", className="fw-bold"
+                                        ),
+                                        dbc.Input(
+                                            id="designer-placeholder-input",
+                                            value="^",
+                                            maxLength=1,
+                                            type="text",
+                                        ),
+                                        html.Small(
+                                            "Used for unfilled wells when exporting",
+                                            className="text-muted",
+                                        ),
+                                    ],
+                                    width=12,
+                                    md=3,
+                                    className="mb-3",
+                                ),
+                            ]
+                        ),
                         # Plate grid
                         html.Div(id="designer-grid-container", className="mb-3"),
                         html.Hr(),
@@ -513,9 +502,7 @@ def designer_card():
                                             [
                                                 dbc.Button(
                                                     [
-                                                        html.I(
-                                                            className="fa fa-download me-2"
-                                                        ),
+                                                        html.I(className="fa fa-download me-2"),
                                                         "Download Layout CSV",
                                                     ],
                                                     id="designer-export-btn",

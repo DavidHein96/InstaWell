@@ -12,7 +12,7 @@ from typing import Annotated, List
 from pydantic import BaseModel, Field
 from pydantic.types import StringConstraints
 
-# Allows underscores, dashes, and alphanumerics, but must start with a letter, no whitespace
+# Alphanumerics only, must start with a letter, no whitespace
 FriendlyStr = Annotated[
     str,
     StringConstraints(
@@ -51,7 +51,9 @@ class Replicate(BaseModel):
 
 class UniqueCondition(BaseModel):
     """
-    Legacy fixed-dimension condition.
+    Legacy fixed-dimension condition model with hardcoded fields.
+    Deprecated in favor of Condition which supports flexible condition_fields.
+    Kept for backwards compatibility with older experiment data.
     """
 
     full_name: str = ""

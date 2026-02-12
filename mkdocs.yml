@@ -1,6 +1,6 @@
 site_name: InstaWell
 site_description: "Tools for organizing, processing, and visualizing thermal shift assay data."
-site_url: https://github.com/DavidHein96/InstaWell
+site_url: https://davidhein96.github.io/InstaWell/
 repo_url: https://github.com/DavidHein96/InstaWell
 repo_name: DavidHein96/InstaWell
 
@@ -16,6 +16,7 @@ nav:
   - Overview: index.md
   - Pipeline: pipeline.md
   - Dash App: dash_app.md
+  - Fuzz Testing: fuzz_testing.md
   - Development: development.md
 
 markdown_extensions:

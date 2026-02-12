@@ -1,0 +1,74 @@
+name: Bug Report
+description: Something isn't working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill in as much detail as you can.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of InstaWell is affected?
+      options:
+        - Pipeline (Python API)
+        - Dash App
+        - Jupyter Widgets
+        - Installation / Dependencies
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "When I click 'Run Full Pipeline' with wells A1-A12 filtered..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to trigger the bug.
+      placeholder: |
+        1. Upload raw CSV with ...
+        2. Upload layout CSV with ...
+        3. Click 'Setup & View Raw Data'
+        4. See error ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Version info helps us reproduce faster.
+      placeholder: |
+        - InstaWell version: (pip show instawell)
+        - Python version: (python --version)
+        - OS: macOS / Windows / Linux
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output / logs
+      description: Paste any tracebacks, server logs, or browser console errors.
+      render: text
+    validations:
+      required: false

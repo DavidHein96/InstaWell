@@ -95,7 +95,6 @@ def calculate_curve_params(
         if g.empty or np.unique(g["conc_num"]).size < 4:  # Magic 4 is fine here b/c its a 4PL
             logger.info(f"Skipping panel {panel_keys}: insufficient positive-dose data.")
             continue
-
         # weighting
         sigma = None
         if weighting == "1/y^2":
@@ -134,6 +133,8 @@ def calculate_curve_params(
             out = param_ci_from_pcov(params, pcov, dof=dfree, alpha=alpha)
             if out is not None:
                 se, lo, hi = out
+                safe_log_ec50_lo = np.clip(lo[2], -300, 300)
+                safe_log_ec50_hi = np.clip(hi[2], -300, 300)
                 ci_fields = {
                     "SE_bottom": se[0],
                     "SE_top": se[1],
@@ -145,8 +146,8 @@ def calculate_curve_params(
                     "CI95_top_high": hi[1],
                     "CI95_logEC50_low": lo[2],
                     "CI95_logEC50_high": hi[2],
-                    "CI95_EC50_low": 10 ** lo[2],
-                    "CI95_EC50_high": 10 ** hi[2],
+                    "CI95_EC50_low": 10**safe_log_ec50_lo,
+                    "CI95_EC50_high": 10**safe_log_ec50_hi,
                     "CI95_Hill_low": lo[3],
                     "CI95_Hill_high": hi[3],
                 }

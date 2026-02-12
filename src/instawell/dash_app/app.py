@@ -2,11 +2,14 @@
 Main Dash application setup.
 """
 
+import logging
 from pathlib import Path
 
 from .callbacks import register_callbacks
 from .designer_callbacks import register_designer_callbacks
 from .layout import create_layout
+
+logger = logging.getLogger("instawell.dash_app")
 
 
 def create_app(experiments_root: str = "experiments", debug: bool = False):
@@ -62,11 +65,13 @@ def create_app(experiments_root: str = "experiments", debug: bool = False):
             "CACHE_DEFAULT_TIMEOUT": 86400,
         },
     )
-    app.cache = cache
+    app.cache = cache  # ty: ignore[unresolved-attribute]
 
     # Store experiments root in app config
-    app.experiments_root = Path(experiments_root)
+    app.experiments_root = Path(experiments_root)  # ty: ignore[unresolved-attribute]
     app.experiments_root.mkdir(parents=True, exist_ok=True)
+
+    logger.info("Starting InstaWell Dash app (experiments_root=%s)", app.experiments_root)
 
     # Create layout
     app.layout = create_layout()
@@ -105,6 +110,13 @@ def main():
         help="Enable Dash debug/reload mode",
     )
     args = parser.parse_args()
+
+    if args.host == "0.0.0.0":  # noqa: S104
+        logger.warning(
+            "Binding to 0.0.0.0 exposes the app to all network interfaces. "
+            "This is intended for local/trusted networks only — the Dash dev "
+            "server is not designed for production use."
+        )
 
     app = create_app(experiments_root=args.experiments_root, debug=args.debug)
     app.run(host=args.host, port=args.port, debug=args.debug)

@@ -179,15 +179,6 @@ class TestExperimentContextValidation:
                 empty_condition_placeholder="00",
             )
 
-        # Alphanumeric placeholder should fail
-        # with pytest.raises(ValidationError, match="should not be a letter or digit"):
-        #     ExperimentContext(
-        #         experiment_name="test",
-        #         raw_data_path=raw_path,
-        #         layout_data_path=layout_path,
-        #         empty_condition_placeholder="0",
-        #     )
-
     @pytest.mark.unit
     def test_separator_and_placeholder_must_differ(self, tmp_path):
         """Test that separator and placeholder cannot be the same."""

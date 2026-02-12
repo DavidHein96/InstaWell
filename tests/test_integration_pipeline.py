@@ -14,7 +14,7 @@ import pytest
 
 from instawell import (
     StepFiles,
-    average_accross_replicates,
+    average_across_replicates,
     calculate_derivative,
     filter_wells,
     find_min_temperature,
@@ -227,7 +227,7 @@ class TestPipelineStage2Filter:
 
 
 class TestPipelineStage3Average:
-    """Tests for the average_accross_replicates() function."""
+    """Tests for the average_across_replicates() function."""
 
     @pytest.mark.integration
     def test_average_produces_expected_output(self, temp_experiment_dir):
@@ -243,7 +243,7 @@ class TestPipelineStage3Average:
         filter_wells(ctx, wells_to_filter=[])
 
         # Average
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
 
         # Load actual output
         actual_df = pd.read_csv(ctx.experiment_dir / StepFiles.AVERAGED_DATA.value)
@@ -270,7 +270,7 @@ class TestPipelineStage4BackgroundSubtraction:
         )
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
 
         # Subtract background
         subtract_background(ctx)
@@ -295,7 +295,7 @@ class TestPipelineStage4BackgroundSubtraction:
         )
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
 
         # Check that NPC columns are removed
@@ -320,7 +320,7 @@ class TestPipelineStage5MinMaxScale:
         )
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
 
         # Scale
@@ -346,7 +346,7 @@ class TestPipelineStage5MinMaxScale:
         )
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
         min_max_scale(ctx)
 
@@ -378,7 +378,7 @@ class TestPipelineStage6Derivative:
         )
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
 
         # Calculate derivative
@@ -408,7 +408,7 @@ class TestPipelineStage7MinTemperature:
         )
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
         calculate_derivative(ctx)
 
@@ -435,7 +435,7 @@ class TestPipelineStage7MinTemperature:
         )
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
         calculate_derivative(ctx)
         find_min_temperature(ctx)
@@ -478,7 +478,7 @@ class TestFullPipelineIntegration:
         # Run full pipeline
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
         min_max_scale(ctx)
         calculate_derivative(ctx)
@@ -516,7 +516,7 @@ class TestFullPipelineIntegration:
         # Run full pipeline
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
         min_max_scale(ctx)
         calculate_derivative(ctx)

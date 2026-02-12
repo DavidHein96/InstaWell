@@ -12,7 +12,7 @@ import pytest
 
 from instawell import (
     StepFiles,
-    average_accross_replicates,
+    average_across_replicates,
     calculate_derivative,
     filter_wells,
     find_min_temperature,
@@ -100,6 +100,7 @@ def compare_dataframes_exact(
 
             if not actual_nans.equals(expected_nans):
                 mismatch_idx = (actual_nans != expected_nans).idxmax()
+
                 pytest.fail(
                     f"{name}: Column '{col}' NaN mismatch at index {mismatch_idx} - "
                     f"actual isna={actual_nans.iloc[mismatch_idx]}, "
@@ -236,7 +237,7 @@ class TestTSA067ComprehensiveValidation:
         # Run full pipeline through min-max scaling
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[FILTERED_WELL])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
         min_max_scale(ctx)
 
@@ -280,7 +281,7 @@ class TestTSA067ComprehensiveValidation:
         # Run full pipeline through derivative calculation
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[FILTERED_WELL])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
         calculate_derivative(ctx)
 
@@ -323,7 +324,7 @@ class TestTSA067ComprehensiveValidation:
         # Run full pipeline
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[FILTERED_WELL])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
         calculate_derivative(ctx)
         find_min_temperature(ctx)
@@ -377,7 +378,7 @@ class TestTSA067ComprehensiveValidation:
         # Run complete pipeline
         ingest_data(ctx)
         filter_wells(ctx, wells_to_filter=[FILTERED_WELL])
-        average_accross_replicates(ctx)
+        average_across_replicates(ctx)
         subtract_background(ctx)
         min_max_scale(ctx)
         calculate_derivative(ctx)

@@ -586,14 +586,17 @@ def create_layout():
             # Stores for uploaded data references (now storing keys, not data)
             dcc.Store(id="raw-data-store", storage_type="session"),
             dcc.Store(id="layout-data-store", storage_type="session"),
-            dcc.Store(id="current-experiment-store"),
+            dcc.Store(id="current-experiment-store", storage_type="memory"),
             dcc.Store(id="filtered-wells-store", data=[]),  # Store filtered wells
             dcc.Store(id="setup-complete-store", data=False),  # Track if setup/ingest done
             # Stores for figure navigation
-            dcc.Store(id="figures-store"),  # Store all figures and their titles
+            dcc.Store(id="figures-store", storage_type="memory"),
             dcc.Store(id="current-figure-index", data=0),  # Track current figure index
             # Store for well grid selection
             dcc.Store(id="selected-wells-grid", data=[]),  # Track selected wells in grid
+            dcc.Store(id="available-wells-store", data=[]),  # Available wells for filtering
+            # Store for pipeline experiment tracking (replaces fragile HTML parsing)
+            dcc.Store(id="last-pipeline-experiment", data=None),
             # UI components
             navbar(),
             # Currently viewing banner (shows when experiment is loaded)

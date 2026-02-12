@@ -27,7 +27,7 @@ def filter_wells(
     Notes
     -----
     02_filtered_organized_data.csv : CSV file with filtered data
-    filtered_wells.txt : Text file listing filtered wells, is "no wells filtered." if none were filtered.
+    filtered_wells.txt : Text file listing filtered wells, is "No wells filtered." if none were filtered.
 
     Raises
     ------
