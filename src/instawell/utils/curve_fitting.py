@@ -92,7 +92,7 @@ def sigma_weight(y: np.ndarray) -> np.ndarray | None:
     return np.clip(np.abs(y), eps, None)
 
 
-def param_ci_from_pcov(params: np.ndarray, pcov: np.ndarray, dof: int, alpha=0.05):
+def param_ci_from_pcov(params: np.ndarray, pcov: np.ndarray | None, dof: int, alpha=0.05):
     if pcov is None or not np.all(np.isfinite(pcov)):
         return None
     se = np.sqrt(np.clip(np.diag(pcov), 0, np.inf))

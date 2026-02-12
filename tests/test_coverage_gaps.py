@@ -21,7 +21,6 @@ import pytest
 from instawell.core.exp_context import ExperimentContext
 from instawell.core.steps import StepFiles
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. utils/utils.py
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -403,10 +402,12 @@ class TestParseConditionsWarning:
     def test_bad_condition_logged(self, tmp_path):
         from instawell.processing.step_01_ingest_data import _parse_conditions
 
-        layout = pd.DataFrame({
-            "Well": ["A", "A"],
-            "1": ["good_cond_prot_buf", "too_many_parts_here_fail_parse_extra"],
-        })
+        layout = pd.DataFrame(
+            {
+                "Well": ["A", "A"],
+                "1": ["good_cond_prot_buf", "too_many_parts_here_fail_parse_extra"],
+            }
+        )
         ctx = _make_ctx_stub(tmp_path)
         unique = {"good_cond_prot_buf", "too_many_parts_here_fail_parse_extra"}
         # Should not raise — just warns and skips
@@ -474,37 +475,37 @@ class TestSubtractBackgroundErrors:
 
         sep = ctx.condition_separator
         # Build long data with duplicate NPC rows
-        long_data = pd.DataFrame({
-            "Temperature": [25, 25, 25, 30, 30, 30],
-            "value": [10, 12, 100, 15, 17, 200],
-            "well": ["A1", "A1dup", "B1", "A1", "A1dup", "B1"],
-            "concentration": ["10uM", "10uM", "10uM", "10uM", "10uM", "10uM"],
-            "ligand": ["LigA", "LigA", "LigA", "LigA", "LigA", "LigA"],
-            "protein": ["NPC", "NPC", "ProtX", "NPC", "NPC", "ProtX"],
-            "buffer": ["Buf1", "Buf1", "Buf1", "Buf1", "Buf1", "Buf1"],
-            "unqcond": [
-                sep.join(["10uM", "LigA", "NPC", "Buf1"]),
-                sep.join(["10uM", "LigA", "NPC", "Buf1"]),
-                sep.join(["10uM", "LigA", "ProtX", "Buf1"]),
-                sep.join(["10uM", "LigA", "NPC", "Buf1"]),
-                sep.join(["10uM", "LigA", "NPC", "Buf1"]),
-                sep.join(["10uM", "LigA", "ProtX", "Buf1"]),
-            ],
-            "well_unqcond": ["w1", "w2", "w3", "w4", "w5", "w6"],
-        })
-        long_data.to_csv(
-            ctx.experiment_dir / StepFiles.AVERAGED_DATA_LONG.value, index=False
+        long_data = pd.DataFrame(
+            {
+                "Temperature": [25, 25, 25, 30, 30, 30],
+                "value": [10, 12, 100, 15, 17, 200],
+                "well": ["A1", "A1dup", "B1", "A1", "A1dup", "B1"],
+                "concentration": ["10uM", "10uM", "10uM", "10uM", "10uM", "10uM"],
+                "ligand": ["LigA", "LigA", "LigA", "LigA", "LigA", "LigA"],
+                "protein": ["NPC", "NPC", "ProtX", "NPC", "NPC", "ProtX"],
+                "buffer": ["Buf1", "Buf1", "Buf1", "Buf1", "Buf1", "Buf1"],
+                "unqcond": [
+                    sep.join(["10uM", "LigA", "NPC", "Buf1"]),
+                    sep.join(["10uM", "LigA", "NPC", "Buf1"]),
+                    sep.join(["10uM", "LigA", "ProtX", "Buf1"]),
+                    sep.join(["10uM", "LigA", "NPC", "Buf1"]),
+                    sep.join(["10uM", "LigA", "NPC", "Buf1"]),
+                    sep.join(["10uM", "LigA", "ProtX", "Buf1"]),
+                ],
+                "well_unqcond": ["w1", "w2", "w3", "w4", "w5", "w6"],
+            }
         )
+        long_data.to_csv(ctx.experiment_dir / StepFiles.AVERAGED_DATA_LONG.value, index=False)
 
         # Build matching wide data
-        wide_data = pd.DataFrame({
-            "Temperature": [25, 30],
-            sep.join(["10uM", "LigA", "NPC", "Buf1"]): [11.0, 16.0],
-            sep.join(["10uM", "LigA", "ProtX", "Buf1"]): [100.0, 200.0],
-        })
-        wide_data.to_csv(
-            ctx.experiment_dir / StepFiles.AVERAGED_DATA.value, index=False
+        wide_data = pd.DataFrame(
+            {
+                "Temperature": [25, 30],
+                sep.join(["10uM", "LigA", "NPC", "Buf1"]): [11.0, 16.0],
+                sep.join(["10uM", "LigA", "ProtX", "Buf1"]): [100.0, 200.0],
+            }
         )
+        wide_data.to_csv(ctx.experiment_dir / StepFiles.AVERAGED_DATA.value, index=False)
 
         subtract_background(ctx)
 
@@ -541,20 +542,20 @@ class TestMinMaxScaleEdges:
         cond_a = sep.join(["10uM", "LigA", "ProtA", "Buf1"])
         cond_b = sep.join(["20uM", "LigB", "ProtB", "Buf1"])
 
-        long_data = pd.DataFrame({
-            "Temperature": [25, 30, 35, 25, 30, 35],
-            "value": [0.5, 0.5, 0.5, 10.0, 20.0, 30.0],  # cond_a is constant (within [0,1])
-            "well": ["A1", "A1", "A1", "B1", "B1", "B1"],
-            "concentration": ["10uM", "10uM", "10uM", "20uM", "20uM", "20uM"],
-            "ligand": ["LigA", "LigA", "LigA", "LigB", "LigB", "LigB"],
-            "protein": ["ProtA", "ProtA", "ProtA", "ProtB", "ProtB", "ProtB"],
-            "buffer": ["Buf1", "Buf1", "Buf1", "Buf1", "Buf1", "Buf1"],
-            "unqcond": [cond_a, cond_a, cond_a, cond_b, cond_b, cond_b],
-            "well_unqcond": ["w1", "w1", "w1", "w2", "w2", "w2"],
-        })
-        long_data.to_csv(
-            ctx.experiment_dir / StepFiles.BG_SUB_DATA_LONG.value, index=False
+        long_data = pd.DataFrame(
+            {
+                "Temperature": [25, 30, 35, 25, 30, 35],
+                "value": [0.5, 0.5, 0.5, 10.0, 20.0, 30.0],  # cond_a is constant (within [0,1])
+                "well": ["A1", "A1", "A1", "B1", "B1", "B1"],
+                "concentration": ["10uM", "10uM", "10uM", "20uM", "20uM", "20uM"],
+                "ligand": ["LigA", "LigA", "LigA", "LigB", "LigB", "LigB"],
+                "protein": ["ProtA", "ProtA", "ProtA", "ProtB", "ProtB", "ProtB"],
+                "buffer": ["Buf1", "Buf1", "Buf1", "Buf1", "Buf1", "Buf1"],
+                "unqcond": [cond_a, cond_a, cond_a, cond_b, cond_b, cond_b],
+                "well_unqcond": ["w1", "w1", "w1", "w2", "w2", "w2"],
+            }
         )
+        long_data.to_csv(ctx.experiment_dir / StepFiles.BG_SUB_DATA_LONG.value, index=False)
 
         # No wide file exists — tests the "could not find original wide" warning too
         min_max_scale(ctx)
@@ -607,20 +608,20 @@ class TestCalcCurveParams:
         temps = [45.0, 46.0, 50.0, 55.0, 60.0, 62.0]
 
         rows = []
-        for c, t in zip(concs, temps):
-            rows.append({
-                "unqcond": sep.join([c, "LigA", "ProtX", "Buf1"]),
-                "min_temperature": t,
-                "concentration": c,
-                "ligand": "LigA",
-                "protein": "ProtX",
-                "buffer": "Buf1",
-            })
+        for c, t in zip(concs, temps, strict=True):
+            rows.append(
+                {
+                    "unqcond": sep.join([c, "LigA", "ProtX", "Buf1"]),
+                    "min_temperature": t,
+                    "concentration": c,
+                    "ligand": "LigA",
+                    "protein": "ProtX",
+                    "buffer": "Buf1",
+                }
+            )
 
         df = pd.DataFrame(rows)
-        df.to_csv(
-            ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA.value, index=False
-        )
+        df.to_csv(ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA.value, index=False)
         return ctx
 
     @pytest.mark.unit
@@ -661,12 +662,14 @@ class TestCalcCurveParams:
         temps = [46.0, 50.0, 55.0, 60.0, 62.0]
 
         rows = []
-        for c, t in zip(concs, temps):
-            rows.append({
-                "unqcond": c,
-                "min_temperature": t,
-                "concentration": c,
-            })
+        for c, t in zip(concs, temps, strict=True):
+            rows.append(
+                {
+                    "unqcond": c,
+                    "min_temperature": t,
+                    "concentration": c,
+                }
+            )
 
         pd.DataFrame(rows).to_csv(
             ctx.experiment_dir / StepFiles.MIN_TEMPERATURES_DATA.value, index=False
@@ -814,19 +817,19 @@ class TestAverageReplicatesErrors:
         sep = ctx.condition_separator
         cond = sep.join(["DrugA", "Kinase1", "DMSO"])
 
-        filtered = pd.DataFrame({
-            "Temperature": [25, 30, 25, 30],
-            "value": [100, 200, 110, 210],
-            "well": ["A1", "A1", "A2", "A2"],
-            "compound": ["DrugA"] * 4,
-            "target": ["Kinase1"] * 4,
-            "solvent": ["DMSO"] * 4,
-            "unqcond": [cond] * 4,
-            "well_unqcond": ["A1_" + cond, "A1_" + cond, "A2_" + cond, "A2_" + cond],
-        })
-        filtered.to_csv(
-            ctx.experiment_dir / StepFiles.FILTERED_DATA.value, index=False
+        filtered = pd.DataFrame(
+            {
+                "Temperature": [25, 30, 25, 30],
+                "value": [100, 200, 110, 210],
+                "well": ["A1", "A1", "A2", "A2"],
+                "compound": ["DrugA"] * 4,
+                "target": ["Kinase1"] * 4,
+                "solvent": ["DMSO"] * 4,
+                "unqcond": [cond] * 4,
+                "well_unqcond": ["A1_" + cond, "A1_" + cond, "A2_" + cond, "A2_" + cond],
+            }
         )
+        filtered.to_csv(ctx.experiment_dir / StepFiles.FILTERED_DATA.value, index=False)
 
         average_across_replicates(ctx)
 
