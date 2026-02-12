@@ -189,41 +189,14 @@ def _initial_raw_data_organize(
 
     sep = ctx.condition_separator
     for _, info in experiment_info.items():
-        # for dim in ctx.condition_fields:
         dims = ctx.condition_fields
-
-        # ligand = info.ligand_name
-        # protein = info.protein_name
-        # buffer = info.buffer_condition
-        # concentration = info.concentration
-
         replicate_wells = [rep.well_name for rep in info.replicates]
-
-        # create a mask for the rows that have a well that is in replicate_wells
         mask = raw_data_long["well"].isin(replicate_wells)
 
-        # add the columns to the raw data long
         for dim in dims:
             value = info.dimensions[dim]
             raw_data_long.loc[mask, dim] = value
 
-        # raw_data_long.loc[mask, "ligand"] = ligand
-        # raw_data_long.loc[mask, "protein"] = protein
-        # raw_data_long.loc[mask, "buffer"] = buffer
-        # raw_data_long.loc[mask, "concentration"] = concentration
-
-    # raw_data_long["well_unqcond"] = (
-    #     raw_data_long["well"]
-    #     + sep
-    #     + raw_data_long["concentration"]
-    #     + sep
-    #     + raw_data_long["ligand"]
-    #     + sep
-    #     + raw_data_long["protein"]
-    #     + sep
-    #     + raw_data_long["buffer"]
-    # )
-    # dims = list(ctx.condition_fields)
     raw_data_long["well_unqcond"] = (
         raw_data_long["well"] + sep + raw_data_long[dims_list].agg(sep.join, axis=1)
     )

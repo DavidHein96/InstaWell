@@ -42,8 +42,8 @@ def setup_experiment(
         Path to the raw data file, should be a CSV.
     layout_data_path : str
         Path to the layout data file, should be a CSV.
-    fields : tuple[str, ...], optional
-        Layout fields,  This is the order that they are expected to be in the condition strings. Make sure these match the actual fields used in your layout. By default ("concentration", "ligand", "protein", "buffer").
+    condition_fields : tuple[str, ...], optional
+        Layout fields in the order they appear in condition strings. Make sure these match the actual fields used in your layout. By default ("concentration", "ligand", "protein", "buffer").
     condition_separator : str, optional
         Used to split condition strings into their components in the layout file, by default "_"
     empty_condition_placeholder : str, optional

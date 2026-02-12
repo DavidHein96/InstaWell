@@ -2,19 +2,23 @@
 Callbacks for the layout designer.
 """
 
+import logging
+
 import pandas as pd
 from dash import Input, Output, State, html, no_update
 from dash.exceptions import PreventUpdate
 
+from .constants import DEFAULT_PLACEHOLDER, DEFAULT_SEPARATOR
 from .designer import (
     DESIGNER_FIELDS,
-    WELL_PATTERN,
+    PLATE_TYPES,
     create_plate_grid,
     get_row_labels,
     infer_plate_from_raw,
-    PLATE_TYPES,
 )
-from .utils import parse_upload
+from .utils import parse_upload, validate_separator_placeholder
+
+logger = logging.getLogger("instawell.dash_app.designer")
 
 
 def register_designer_callbacks(app):
@@ -80,7 +84,7 @@ def register_designer_callbacks(app):
             new_state["available_wells"] = available_wells
             return new_state
         except Exception:
-            # Silently fail - user can still use designer without import
+            logger.warning("Failed to import wells from raw CSV '%s'", filename)
             return no_update
 
     @app.callback(
@@ -106,8 +110,8 @@ def register_designer_callbacks(app):
             return []
 
         plate_type = state["plate_type"]
-        rows, cols = PLATE_TYPES[plate_type]
-        row_labels = get_row_labels(rows)
+        n_rows, _cols = PLATE_TYPES[plate_type]
+        row_labels = get_row_labels(n_rows)
 
         wells = []
         for cell in selected_cells:
@@ -257,8 +261,7 @@ def register_designer_callbacks(app):
         cells = dict(new_state.get("cells", {}))
 
         for well in selected_wells:
-            if well in cells:
-                del cells[well]
+            cells.pop(well, None)
 
         new_state["cells"] = cells
         return new_state
@@ -295,12 +298,14 @@ def register_designer_callbacks(app):
         if not cells:
             raise PreventUpdate
 
-        sep = (separator or "|").strip() or "|"
-        if len(sep) != 1:
-            sep = "|"
-        placeholder_char = (placeholder or "^").strip() or "^"
-        if len(placeholder_char) != 1 or placeholder_char == sep:
-            placeholder_char = "^"
+        sep_raw = (separator or DEFAULT_SEPARATOR).strip() or DEFAULT_SEPARATOR
+        placeholder_raw = (placeholder or DEFAULT_PLACEHOLDER).strip() or DEFAULT_PLACEHOLDER
+        try:
+            sep, placeholder_char = validate_separator_placeholder(sep_raw, placeholder_raw)
+        except ValueError:
+            sep = DEFAULT_SEPARATOR
+            placeholder_char = DEFAULT_PLACEHOLDER
+
         empty_mask = sep.join(placeholder_char for _ in DESIGNER_FIELDS)
 
         plate_type = state["plate_type"]
@@ -330,8 +335,7 @@ def register_designer_callbacks(app):
             data.append(row_data)
 
         df = pd.DataFrame(data)
-
-        # Convert to CSV
         csv_string = df.to_csv(index=False)
 
+        logger.info("Exported layout CSV with %d conditions", len(cells))
         return dict(content=csv_string, filename="layout.csv")

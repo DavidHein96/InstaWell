@@ -35,7 +35,7 @@ class ExperimentContext(BaseModel):
     raw_data_source: FilePath | None = None
     layout_data_source: FilePath | None = None
 
-    # fields (must ensure these are in the correct order)
+    # Field names in the order they appear in condition strings (must match layout data)
     condition_fields: tuple[str, ...] = ("concentration", "ligand", "protein", "buffer")
     well_col_identifier: str = "Well"
     empty_condition_placeholder: str = "0"
@@ -126,11 +126,6 @@ class ExperimentContext(BaseModel):
                 f"empty_condition_placeholder '{v}' is not allowed "
                 "(commas/semicolons conflict with CSV/TSV parsing)."
             )
-        # if v.isalnum():
-        #     raise ValueError(
-        #         f"empty_condition_placeholder '{v}' should not be a letter or digit; "
-        #         "it should be a symbolic marker unlikely to appear in real values."
-        #     )
         return v
 
     @model_validator(mode="after")

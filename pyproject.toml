@@ -18,7 +18,7 @@ authors = [{ name = "David Hein", email = "davidhein67@gmail.com" }]
 maintainers = [{ name = "David Hein" }]
 license = { file = "LICENSE" }
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
     "License :: OSI Approved :: GNU Affero General Public License v3",
@@ -35,12 +35,18 @@ dependencies = [
     "plotly[express] >=5.18,<7.0",
     "pydantic>=2.7,<3.0",
     "scipy>=1.9.0,<2.0",
+    "ipywidgets>=7.6.0,<9.0",
+    "ipython>=8.0.0,<10.0",
 ]
 
 [project.optional-dependencies]
-notebook = ["ipywidgets>=7.6.0,<9.0", "notebook>=6.4.0,<8.0"]
-dash = ["dash>=3.0.4,<4.0", "dash-bootstrap-components>=2.0.0"]
-dev = ["mypy>=1.17.1", "pre-commit>=4.3.0", "ruff>=0.12.8"]
+notebook = ["jupyter>=1.0,<2.0"]
+dash = [
+    "dash>=3.0.4,<4.0",
+    "dash-bootstrap-components>=2.0.0,<3.0",
+    "flask-caching>=2.3.1,<3.0",
+]
+dev = ["ty>=0.0.7", "pre-commit>=4.3.0", "ruff>=0.12.8"]
 docs = ["mkdocs>=1.6.0"]
 
 [dependency-groups]
@@ -99,23 +105,99 @@ lint.ignore = [
 ] # Opinionated, We have wide screen monitors lol, also some functions need a lot of options like figure generators
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["S"]
+"**/tests/**/*.py" = [
+    "S101",    # assert is fine in tests
+    "PLR2004", # Magic value comparison is fine in tests
+    "PLC0415", # Lazy imports in tests (e.g. for test-specific dependencies)
+    "RUF001",  # Greek/unicode chars are intentional in test data
+    "F841",    # Unused variables OK in tests (e.g. testing side effects)
+    "RUF059",  # Unused unpacked variables OK in tests (destructuring callback returns)
+    "B007",    # Unused loop vars OK in tests
+    "SIM108",  # Ternary not always clearer in tests
+    "E402",    # Imports not at top OK in tests
+]
+"src/instawell/__init__.py" = [
+    "E402",   # Imports after logging.getLogger() setup — intentional
+    "RUF022", # __all__ is grouped by section, not alphabetical
+]
+"src/instawell/dash_app/app.py" = [
+    "PLC0415", # try/except for optional dash deps; lazy argparse in main()
+]
+"src/instawell/dash_app/callbacks/*.py" = [
+    "PLR0915", # register_*_callbacks functions are large by design
+    "PLR0912", # validate_layout has many branches by necessity
+]
+"src/instawell/dash_app/designer_callbacks.py" = [
+    "PLR0915", # register_designer_callbacks is large by design — same rationale as callbacks/*
+]
+"src/instawell/utils/curve_fitting.py" = [
+    "N803",    # logEC50 is standard scientific notation
+    "N806",    # logEC50 variable follows scientific convention
+    "PLR2004", # Magic numbers (3, 4) are domain-specific minimums for curve fitting
+]
+"src/instawell/processing/step_08_calc_curves.py" = [
+    "N806",    # logEC50 follows scientific convention
+    "PLW2901", # Intentional loop variable reassignment (g0 = g0.copy())
+    "PLR2004", # 4PL requires minimum 4 data points
+    "PLR0915", # calculate_curve_params has many sequential steps
+]
+"src/instawell/figures/notebook_helpers.py" = [
+    "N812", # `import ipywidgets as W` is idiomatic
+    "S110", # try-except-pass is intentional fallback for title extraction
+]
+"src/instawell/figures/*.py" = [
+    "RUF002", # Unicode chars (degree symbols) in docstrings are intentional
+]
+"src/instawell/figures/min_temp_fig.py" = [
+    "N806", # logEC50 follows scientific convention
+]
+"src/instawell/processing/step_01_ingest_data.py" = [
+    "PLR2004", # layout_df.shape[1] < 2 is a clear domain constraint
+]
+"src/instawell/processing/step_05_minmax_scale.py" = [
+    "PLR2004", # Floating-point tolerance constants (-1e-9) are domain-specific
+]
 
 
-[tool.mypy]
-python_version = "3.10"
-packages = ["instawell"]
+[tool.ty.environment]
+python-version = "3.10"
+
+# conftest ExperimentContext instantiation uses a `fields` kwarg ty can't resolve
+[[tool.ty.overrides]]
+include = ["tests/conftest.py"]
+[tool.ty.overrides.rules]
+unknown-argument = "ignore"
+
+# Pydantic validation tests intentionally pass extra/wrong/missing args
+[[tool.ty.overrides]]
+include = ["tests/test_data_models.py"]
+[tool.ty.overrides.rules]
+unknown-argument = "ignore"
+missing-argument = "ignore"
+invalid-argument-type = "ignore"
+
+# pandas stubs type .iloc as int-only; pytest.fail multiline f-string misparse
+[[tool.ty.overrides]]
+include = [
+    "tests/test_dash_app.py",
+    "tests/test_integration_pipeline.py",
+    "tests/test_integration_tsa067.py",
+]
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
 
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = [
-    "-ra",              # Show summary of all test outcomes
-    "-v",               # Verbose output
-    "--strict-markers", # Require all markers to be registered
-    "--strict-config",  # Strict config parsing
-    "--tb=short",       # Shorter traceback format
+    "-ra",                       # Show summary of all test outcomes
+    "-v",                        # Verbose output
+    "--strict-markers",          # Require all markers to be registered
+    "--strict-config",           # Strict config parsing
+    "--tb=short",                # Shorter traceback format
+    "--cov=instawell",           # Measure coverage of the instawell package
+    "--cov-report=term-missing", # Show which lines are uncovered
 ]
 markers = [
     "integration: marks tests as integration tests (may be slower)",
@@ -129,7 +211,7 @@ filterwarnings = [
 
 [project.urls]
 homepage = "https://github.com/DavidHein96/InstaWell"
-Documentation = "https://github.com/DavidHein96/InstaWell#readme"
+Documentation = "https://davidhein96.github.io/InstaWell/"
 Changelog = "https://github.com/DavidHein96/InstaWell/blob/dev/CHANGELOG.md"
 Source = "https://github.com/DavidHein96/InstaWell"
 Issues = "https://github.com/DavidHein96/InstaWell/issues"

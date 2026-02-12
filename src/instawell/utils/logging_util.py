@@ -17,7 +17,7 @@ class MaxLevelFilter(logging.Filter):
         super().__init__()
         self.max_level = max_level
 
-    def filter(self, record: logging.LogRecord) -> bool:  # type: ignore[override]
+    def filter(self, record: logging.LogRecord) -> bool:
         return record.levelno <= self.max_level
 
 

@@ -91,8 +91,8 @@ def average_across_replicates(ctx: ExperimentContext) -> None:
 
     if ctx.condition_fields != ("concentration", "ligand", "protein", "buffer"):
         logger.warning(
-            "Custom condition fields detected, but sorting of averaged data columns only supports"
-            "the standard fields (concentration, ligand, protein, buffer). Columns will not be sorted."
+            "Custom condition fields detected; columns will use default ordering "
+            "rather than the concentration-aware sorting used for standard fields."
         )
         sorted_columns = condition_columns
     else:

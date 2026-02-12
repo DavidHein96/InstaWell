@@ -79,10 +79,7 @@ instawell-dash --port 8051
 
 The app lets you upload raw/layout CSVs, configure separators, validate layouts, run the pipeline, and browse Plotly figures. The [Dash App](dash_app.md) page walks through the layout designer and validation workflow in detail.
 
-!!! warning "Experimental UI"
-    The Dash interface is still under active development and hasn’t received the
-    same level of automated testing as the core pipeline. Expect occasional rough
-    edges; for production workflows stick to the Python API for now.
+See the [Dash App](dash_app.md) page for architecture details, testing notes, and workflow tips.
 
 ## Working With Figures
 

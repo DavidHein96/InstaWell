@@ -140,15 +140,6 @@ class TestSpecialCharacters:
         assert result.dimensions["protein"] == "Proteinα"
         assert result.dimensions["buffer"] == "Bufferβ"
 
-    # @pytest.mark.unit
-    # def test_validate_complex_condition_strings(self):
-    #     """Test validation of complex but valid condition strings."""
-    #     # These should all be valid
-    #     assert validate_condition_string(
-    #         "500uM_Geranyl-Monophosphate_d104hFic-H363A_1mM-ATP-5mM-MgCl2"
-    #     )
-    #     assert validate_condition_string("1.5mM_ATP_His6-MBP-Protein_20mM-Tris-pH7.4")
-    #     assert validate_condition_string("apo_DMSO_NPC_Buffer1")
 
 
 class TestFilterWellsEdgeCases:

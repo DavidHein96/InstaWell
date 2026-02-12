@@ -1,94 +1,53 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+# Python
+*.py[cod]
+*$py.class
+__pycache__/
+*.egg-info/
+dist/
+build/
+.venv/
 
-# Go build artifacts
-server
-
-migrate
-main
-archive/*
-/cmd/server/main
-/cmd/migrate/main
-
-# Test binary, built with `go test -c`
-*.test
-integration.test
-
-# Code coverage profiles and other test artifacts
-*.out
+# Coverage & test artifacts
+.coverage
 coverage.*
 *.coverprofile
-profile.cov
+htmlcov/
+.hypothesis/
 
-# IDE and editor files
+# Jupyter
+.ipynb_checkpoints/
+testing.ipynb
+
+# IDE / editor
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
 
-# env file
-.env
-.env.local
-
-# Go modules download cache
-go.sum.backup
-
-# Virtual environments
-.venv
-
-# Docker and container artifacts
-*.log
-docker-compose.override.yml
-
-# Development and debugging
-debug
-*.pprof
-*.trace
-
-# Miscellaneous
-archive/*
-.hypothesis
-temp_videos
-new_downloads
-duck_downloads/
-*.mp4
-*.csv
-*.wav
-*.logs
-*.DS_Store
+# OS
 .DS_Store
 
-# Local folders for testing downloads
-downloads/*
-!downloads/.gitkeep
-
-# Test environment files
+# Environment / secrets
+.env
+.env.local
 !.env.example
 !.env.test
-server
-
-
-# Python stuff
-*.py[cod]
-*$py.class
-__pycache__/
-
-*.egg-info/
-dist/
-build/
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
-
-.vscode/
-all_data
-todo.md
-*.zip
-.coverage
-publishing.md
 .pypirc
-testing.ipynb
+
+# Dash app cache
+.instawell-cache/
+
+# MkDocs build output
+site/
+
+# Local dev notes & scratch files
+dev_notes/
+todo.md
+publishing.md
+all_data/
+
+# Data files (test data is generated in-memory)
+*.csv
+*.zip
+*.log

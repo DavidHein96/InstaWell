@@ -12,6 +12,7 @@ import pandas as pd
 import pytest
 
 from instawell.core.data_models import Replicate, UniqueCondition
+from instawell.core.exp_context import ExperimentContext
 
 
 @pytest.fixture
@@ -210,15 +211,13 @@ def field_order_scenarios(request) -> tuple[str, tuple[str, ...]]:
 
 
 @pytest.fixture
-def experiment_context(tmp_path: Path) -> "ExperimentContext":
+def experiment_context(tmp_path: Path) -> ExperimentContext:
     """
     Create a sample ExperimentContext for testing.
 
     Note: This creates a context but does NOT create actual files.
     Use setup_experiment_fixture() for full setup with files.
     """
-    from instawell.core.exp_context import ExperimentContext
-
     raw_path = tmp_path / "raw_data.csv"
     layout_path = tmp_path / "layout.csv"
 
@@ -235,7 +234,7 @@ def experiment_context(tmp_path: Path) -> "ExperimentContext":
 
 
 @pytest.fixture
-def setup_experiment_fixture(tmp_path: Path, sample_csv_files) -> "ExperimentContext":
+def setup_experiment_fixture(tmp_path: Path, sample_csv_files) -> ExperimentContext:
     """
     Setup a complete experiment with actual CSV files and initialized directory.
 
@@ -261,10 +260,8 @@ def setup_experiment_fixture(tmp_path: Path, sample_csv_files) -> "ExperimentCon
 
 
 @pytest.fixture
-def experiment_context_custom_separator(tmp_path: Path) -> "ExperimentContext":
+def experiment_context_custom_separator(tmp_path: Path) -> ExperimentContext:
     """Create an ExperimentContext with custom separator for testing."""
-    from instawell.core.exp_context import ExperimentContext
-
     raw_path = tmp_path / "raw_data.csv"
     layout_path = tmp_path / "layout.csv"
 

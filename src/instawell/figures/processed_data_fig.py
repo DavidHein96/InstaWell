@@ -45,8 +45,6 @@ def _map_data_source(ctx: ExperimentContext, data_source: DataSourceName) -> tup
     except KeyError as exc:  # should be impossible if type-checking is used
         raise ValueError(f"Unsupported data_source {data_source!r}") from exc
 
-    # StepFiles is a str Enum, so either of these is fine:
-    # return ctx.experiment_dir / step_file
     data_path = ctx.experiment_dir / step_file.value
 
     return data_path, plot_dir_enum

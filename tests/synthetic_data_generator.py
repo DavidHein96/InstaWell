@@ -69,10 +69,10 @@ def four_pl_tm_function(
 def generate_dsf_curve(
     temperature: np.ndarray,
     tm: float,
-    baseline: float = 1000.0,
+    baseline: float = 4000.0,
     amplitude: float = 8000.0,
-    slope: float = 0.15,
-    noise_std: float = 50.0,
+    slope: float = 0.35,
+    noise_std: float = 30.0,
     seed: Optional[int] = None,
 ) -> np.ndarray:
     """
@@ -110,9 +110,9 @@ def generate_dsf_curve(
 
 def generate_npc_curve(
     temperature: np.ndarray,
-    baseline: float = 500.0,
-    drift: float = 10.0,
-    noise_std: float = 30.0,
+    baseline: float = 2800.0,
+    drift: float = -0.7,
+    noise_std: float = 5.0,
     seed: Optional[int] = None,
 ) -> np.ndarray:
     """
@@ -151,7 +151,7 @@ class SyntheticDSFExperiment:
 
     def __init__(
         self,
-        temperature_range: tuple[float, float] = (25.0, 95.0),
+        temperature_range: tuple[float, float] = (6.0, 95.0),
         temperature_step: float = 0.5,
         seed: int = 42,
     ):
@@ -184,9 +184,10 @@ class SyntheticDSFExperiment:
         ec50: float,
         hill: float,
         n_replicates: int = 3,
-        baseline: float = 1000.0,
+        baseline: float = 4000.0,
         amplitude: float = 8000.0,
-        noise_std: float = 50.0,
+        noise_std: float = 30.0,
+        baseline_cv: float = 0.06,
     ):
         """
         Add a complete dose-response series to the experiment.
@@ -204,6 +205,7 @@ class SyntheticDSFExperiment:
             baseline: Baseline fluorescence
             amplitude: Fluorescence amplitude
             noise_std: Noise level
+            baseline_cv: Coefficient of variation for well-to-well variability
         """
         # Store ground truth parameters
         panel_key = f"{ligand}_{protein}_{buffer}"
@@ -226,12 +228,8 @@ class SyntheticDSFExperiment:
             # Format concentration string
             if conc == 0:
                 conc_str = "0uM"
-            elif conc < 1:
-                conc_str = f"{int(conc * 1000)}nM"
-            elif conc < 1000:
-                conc_str = f"{int(conc)}uM"
             else:
-                conc_str = f"{conc / 1000:.1f}mM"
+                conc_str = f"{conc}uM"
 
             condition_str = f"{conc_str}_{ligand}_{protein}_{buffer}"
 
@@ -258,6 +256,7 @@ class SyntheticDSFExperiment:
                         "baseline": baseline,
                         "amplitude": amplitude,
                         "noise_std": noise_std,
+                        "baseline_cv": baseline_cv,
                         "is_npc": False,
                     }
                 )
@@ -268,8 +267,9 @@ class SyntheticDSFExperiment:
         buffer: str,
         concentrations: list[float],
         n_replicates: int = 2,
-        baseline: float = 500.0,
-        noise_std: float = 30.0,
+        baseline: float = 2800.0,
+        noise_std: float = 5.0,
+        baseline_cv: float = 0.06,
     ):
         """
         Add non-protein control (NPC) wells.
@@ -281,17 +281,14 @@ class SyntheticDSFExperiment:
             n_replicates: Number of replicates
             baseline: NPC baseline fluorescence
             noise_std: Noise level
+            baseline_cv: Coefficient of variation for well-to-well variability
         """
         for conc in concentrations:
             # Format concentration string
             if conc == 0:
                 conc_str = "0uM"  # Must match protein wells for background subtraction
-            elif conc < 1:
-                conc_str = f"{int(conc * 1000)}nM"
-            elif conc < 1000:
-                conc_str = f"{int(conc)}uM"
             else:
-                conc_str = f"{conc / 1000:.1f}mM"
+                conc_str = f"{conc}uM"
 
             condition_str = f"{conc_str}_{ligand}_NPC_{buffer}"
 
@@ -307,6 +304,7 @@ class SyntheticDSFExperiment:
                         "replicate": rep,
                         "baseline": baseline,
                         "noise_std": noise_std,
+                        "baseline_cv": baseline_cv,
                         "is_npc": True,
                     }
                 )
@@ -319,7 +317,7 @@ class SyntheticDSFExperiment:
             Tuple of (raw_data_df, layout_df)
         """
         # Assign wells (row-wise, A1, A2, ..., B1, B2, ...)
-        rows = "ABCDEFGH"
+        rows = "ABCDEFGHIJ"
         cols = list(range(1, 13))  # 1-12
 
         wells = []
@@ -334,11 +332,13 @@ class SyntheticDSFExperiment:
 
         # Generate fluorescence data for each well
         raw_data = {"Temperature": self.temperature}
-        layout_data = {"Well": list(rows[:8])}  # First column is row labels
+        layout_data = {"Well": list(rows[:10])}  # First column is row labels
 
         # Initialize layout columns
         for col in cols:
-            layout_data[str(col)] = [""] * 8
+            layout_data[str(col)] = [""] * 10
+
+        rng = np.random.default_rng(self.seed)
 
         for i, condition in enumerate(self.conditions):
             well = wells[i]
@@ -346,11 +346,15 @@ class SyntheticDSFExperiment:
             col_number = int(well[1:])
             row_idx = rows.index(row_letter)
 
+            # Apply well-to-well variability
+            cv = condition.get("baseline_cv", 0.0)
+            scale = rng.normal(1.0, cv) if cv > 0 else 1.0
+
             # Generate fluorescence curve
             if condition["is_npc"]:
                 fluorescence = generate_npc_curve(
                     self.temperature,
-                    baseline=condition["baseline"],
+                    baseline=condition["baseline"] * scale,
                     noise_std=condition["noise_std"],
                     seed=self.seed + i,
                 )
@@ -358,8 +362,8 @@ class SyntheticDSFExperiment:
                 fluorescence = generate_dsf_curve(
                     self.temperature,
                     tm=condition["tm"],
-                    baseline=condition["baseline"],
-                    amplitude=condition["amplitude"],
+                    baseline=condition["baseline"] * scale,
+                    amplitude=condition["amplitude"] * scale,
                     noise_std=condition["noise_std"],
                     seed=self.seed + i,
                 )

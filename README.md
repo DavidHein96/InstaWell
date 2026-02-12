@@ -1,6 +1,8 @@
 [![PyPI version](https://badge.fury.io/py/instawell.svg)](https://pypi.org/project/instawell/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Jupyter-ready](https://img.shields.io/badge/jupyter-ready-orange.svg)](https://jupyter.org/)
+[![Use uv](https://img.shields.io/badge/recommended%20installer-uv-4584b6.svg)](https://docs.astral.sh/uv/)
 
 # InstaWell
 
@@ -11,36 +13,6 @@ Tools for organizing, processing, and visualizing thermal shift assay (TSA) data
 ## Why?
 
 "Man I hate copying and pasting stuff in excel... I wish I could very quickly get from raw TSA data + layout to dose-response curves and Tm values without a million clicks."
-
-## Documentation
-
-The full documentation now lives in the MkDocs site under `docs/`. To browse locally:
-
-```bash
-pip install 'instawell[docs]'
-mkdocs serve
-```
-
-Key pages:
-
-- `docs/index.md` – overview & quick start
-- `docs/pipeline.md` – numbered CSV pipeline guide
-- `docs/dash_app.md` – Dash workflow, layout designer, and validation tips
-
-## Dash App (Experimental)
-
-Prefer a UI? Install the Dash extra and launch the bundled server:
-
-```bash
-pip install 'instawell[dash]'
-instawell-dash --host 0.0.0.0 --port 8050 --experiments-root experiments
-```
-
-You can tweak `--host`, `--port`, `--experiments-root`, and `--debug`. The app
-exposes layout upload/validation, well filtering, and figure browsing directly
-in the browser. Keep in mind the UI is still stabilizing—if something looks off,
-rerun the numbered pipeline functions from Python for production results. See
-[`docs/dash_app.md`](docs/dash_app.md) for screenshots and workflow tips.
 
 ## Features
 
@@ -69,6 +41,19 @@ git clone https://github.com/DavidHein96/InstaWell.git
 cd InstaWell
 uv sync
 ```
+
+## Dash App
+
+Prefer a UI? Install the Dash extra and launch the bundled server:
+
+```bash
+pip install 'instawell[dash]'
+instawell-dash --port 8050 --experiments-root experiments
+```
+
+You can tweak `--host`, `--port`, `--experiments-root`, and `--debug`. The app
+exposes layout upload/validation, well filtering, and figure browsing directly
+in the browser. See [`docs/dash_app.md`](docs/dash_app.md) for architecture details and workflow tips.
 
 ## What does this do?
 
@@ -150,11 +135,27 @@ B, 0|DMSO|NPC|PBS,  1.5|DrugX|ProteinA|PBS,  6|DrugX|ProteinA|PBS
    * 📄 `06_derivative_data(_long).csv`
    * 📄 `07_min_temperatures.csv` (has `concentration, ligand, protein, buffer, min_temperature`)
 
-7. **Dose–response (Prism-style 4PL)**
+7. **Dose–response (Prism-style 4PL) EXPERIMENTAL**
 
    * Fits a **4-parameter logistic** in log10 dose space using `logEC50` (zeros are excluded there).
+   * This is currently not well tested and is experimental—use with caution!
    * Outputs parameter table (Bottom, Top, **logEC50**, EC50, Hill, SEs, 95% CIs, RSS/RMSE, AIC/BIC) and point-wise diagnostics.
    * 📄 `08_curve_params.csv`, `08_curve_diagnostics.csv`
+
+## Documentation
+
+The full documentation now lives in the MkDocs site under `docs/`. To browse locally:
+
+```bash
+pip install 'instawell[docs]'
+mkdocs serve
+```
+
+Key pages:
+
+- `docs/index.md` – overview & quick start
+- `docs/pipeline.md` – numbered CSV pipeline guide
+- `docs/dash_app.md` – Dash workflow, layout designer, and validation tips
 
 ## Quick start
 
@@ -188,12 +189,12 @@ exp = setup_experiment(
 # --- Pipeline (pass along the exp) ---
 ingest_data(exp)                  # -> 01_raw_organized_data.csv
 filter_wells(exp)                 # -> 02_filtered_organized_data.csv
-average_accross_replicates(exp)   # -> 03_averaged_data.csv (+ long for easier formatting)
+average_across_replicates(exp)   # -> 03_averaged_data.csv (+ long for easier formatting)
 subtract_background(exp)          # -> 04_bg_subtracted_data.csv (+ long)
 min_max_scale(exp)                # -> 05_min_max_scaled_data.csv (+ long)
 calculate_derivative(exp)         # -> 06_derivative_data.csv (+ long)
 find_min_temperature(exp)         # -> 07_min_temperatures.csv
-calculate_curve_params(exp)       # -> 08 curves: params/diagnostics CSVs
+calculate_curve_params(exp)       # -> 08 curves: params/diagnostics CSVs (experimental)
 ```
 
 ## Jupyter widgets (requires jupyter notebook)
@@ -207,7 +208,7 @@ raw_figures_widget(exp)
 # Processed/averaged plots (everything after averaging step)
 processed_figures_widget(exp, data_source="bg_subtracted", color_scale="Thermal")
 
-# Min-temperature scatter (with selectable modes in generator args)
+# Min-temperature scatter (with selectable modes in generator args experimental)
 min_temp_figures_widget(exp, mode="log10_fit", color_scale="Viridis")
 ```
 
@@ -238,8 +239,8 @@ experiment.log                  # A log file of pipeline steps
 experiment_info.json            # Parsed layout and wells metadata
 experiment.json                 # ExperimentContext configuration
 filtered_wells.txt              # List of excluded wells for extra reference
-original_raw_data.csv          # Copy of the original raw data
-original_layout_data.csv       # Copy of the original layout data
+original_raw_data.csv           # Copy of the original raw data
+original_layout_data.csv        # Copy of the original layout data
 ```
 
 ## Key concepts
@@ -262,22 +263,27 @@ Common fields:
 * `non_protein_control_marker`: e.g., `"NPC"`
 * `log_to_file`, `log_level`: pipeline logging
 
-## Development Notes
+## Testing
 
-This tool is currently best suited for use from a jupyter notebook, but a CLI and Dash app are in development. The dash app will be very helpful as it will greatly simplify creating a layout file from plate maps.
+```bash
+# Run the full suite (unit, fuzz, Dash app, synthetic integration)
+uv run pytest
+
+# Run only Dash app tests
+uv run pytest tests/test_dash_app.py tests/test_dash_integration.py
+```
+
+CI runs `pytest --ignore=tests/test_integration_pipeline.py --ignore=tests/test_integration_tsa067.py` because those two files depend on private TSA datasets (golden-file comparisons against real instrument data) that are not committed to the repository. All other tests run in CI on Python 3.10 and 3.12.
+
+## Development Notes
 
 **TODOs**
 
-- Finish fully finish implementing the fuzz testing suite for the various data processing functions.
-- Add more integration tests for curve fitting and end-to-end pipeline runs, as well as edge case tests for column parsing and layout handling.
 - Expand the Dash app to cover more of the pipeline steps and improve the layout designer UX.
-- Add better testing and error handling in the dash app.
 - Improve documentation coverage, especially around advanced usage and configuration options.
-- Setup github actions for CI/CD and automated testing.
 - Setup github pages for hosting the MkDocs documentation site.
 - Add more examples and tutorials in the docs.
 - Optimize performance for larger datasets, especially in the data processing functions.
-- Complete passing of most mypy type checks (or maybe try a different type checker)
 
 ## License
 

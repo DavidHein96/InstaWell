@@ -51,6 +51,8 @@ def fit_4pl(
     """
     x = np.asarray(x_lin, float)
     y = np.asarray(y, float)
+    y_min = np.min(y)
+    y_max = np.max(y)
 
     m = (x > 0) & np.isfinite(x) & np.isfinite(y)
     x, y = x[m], y[m]
@@ -63,8 +65,8 @@ def fit_4pl(
     hill_init = _guess_hill_sign(x, y)  # <-- NEW
 
     p0 = [bottom, top, logEC50, hill_init]
-    lb = [-np.inf, -np.inf, -np.inf, hill_bounds[0]]
-    ub = [np.inf, np.inf, np.inf, hill_bounds[1]]
+    lb = [y_min - 10.0, y_min, -np.inf, hill_bounds[0]]
+    ub = [y_max, y_max + 10.0, np.inf, hill_bounds[1]]
 
     try:
         params, pcov = curve_fit(
@@ -90,7 +92,7 @@ def sigma_weight(y: np.ndarray) -> np.ndarray | None:
     return np.clip(np.abs(y), eps, None)
 
 
-def param_ci_from_pcov(params: np.ndarray, pcov: np.ndarray, dof: int, alpha=0.05):
+def param_ci_from_pcov(params: np.ndarray, pcov: np.ndarray | None, dof: int, alpha=0.05):
     if pcov is None or not np.all(np.isfinite(pcov)):
         return None
     se = np.sqrt(np.clip(np.diag(pcov), 0, np.inf))
