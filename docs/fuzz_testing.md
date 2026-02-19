@@ -1,7 +1,5 @@
 # Fuzz Testing with Synthetic Data
 
-![InstaWell icon](assets/instawell-icon-256.png){: style="width:90px"}
-
 The InstaWell fuzz test suite generates synthetic DSF/TSA fluorescence data with known ground-truth parameters, runs the complete pipeline, and verifies that recovered Tm values and 4PL dose-response parameters match expectations. This page explains how the generator works, what each test validates, and how to extend coverage.
 
 ## Why Synthetic Data?

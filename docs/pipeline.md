@@ -1,7 +1,5 @@
 # Pipeline
 
-![InstaWell icon](assets/instawell-icon-256.png){: style="width:90px"}
-
 The InstaWell pipeline is intentionally deterministic: every step reads numbered CSV files, writes its own numbered outputs, and logs to `experiment.log`. This page captures what each stage expects, produces, and how to rerun it safely.
 
 ## Directory Layout
@@ -44,14 +42,18 @@ Numbers correspond to the functions documented below.
 | 07 | `find_min_temperature` | Picks the temperature at the minimum derivative for each `unqcond` (Tm-like point) and splits `unqcond` back into tidy columns. | `07_min_temperatures.csv` |
 | 08 | `calculate_curve_params` | Fits Prism-style 4PLs (log10 domain) to Tm vs concentration per panel (ligand/buffer/protein), computes diagnostics, and stores CI metrics when covariance is available. | `08_curve_params.csv`, `08_curve_diagnostics.csv` |
 
-!!! warning "Curve fitting still stabilizing"
-    Step 08 and any downstream visuals that rely on its outputs (e.g.,
-    ``min_temp_figure_generator(..., mode=\"log10_fit\")``) are still under
-    active development. Inspect residuals and CSV diagnostics before trusting
-    the fit parameters.
+:::{.callout-warning}
+## Curve fitting still stabilizing
+Step 08 and any downstream visuals that rely on its outputs (e.g.,
+``min_temp_figure_generator(..., mode="log10_fit")``) are still under
+active development. Inspect residuals and CSV diagnostics before trusting
+the fit parameters.
+:::
 
-!!! tip "Rerunning"
-    Steps are idempotent: rerunning a function overwrites its outputs but does not modify earlier steps. To reprocess a different separator or layout, re-run steps 00–08.
+:::{.callout-tip}
+## Rerunning
+Steps are idempotent: rerunning a function overwrites its outputs but does not modify earlier steps. To reprocess a different separator or layout, re-run steps 00–08.
+:::
 
 ## CSV Schema Highlights
 

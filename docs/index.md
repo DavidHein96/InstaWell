@@ -1,6 +1,6 @@
 # InstaWell
 
-![InstaWell icon](assets/instawell-icon-256.png){: style="width:120px"}
+![InstaWell icon](assets/instawell-icon-256.png)
 
 InstaWell is a set of opinionated tools for turning raw thermal shift assay (TSA/DSF) output into clean, notebook-ready visualizations and CSV summaries. The Python API powers a CLI pipeline, an interactive Dash app, and a suite of Plotly figures for quick QC.
 
@@ -19,7 +19,7 @@ pip install instawell
 # Optional extras:
 pip install 'instawell[notebook]'  # widget support
 pip install 'instawell[dash]'      # Dash app
-pip install 'instawell[docs]'      # MkDocs authoring
+pip install 'instawell[notebook]'  # Jupyter notebook support
 ```
 
 Or from source:
@@ -97,9 +97,11 @@ These yield Plotly `Figure` objects for inline usage or saving via `write_html`.
 - [Dash App](dash_app.md) – layout designer, validation flow, and figure browsing.
 - [Development](development.md) – contributing, running tests, and serving docs locally.
 
-!!! warning "Curve fits experimental"
-    The dose-response fitting stage (``calculate_curve_params`` / step 08) and
-    the ``log10_fit`` mode of ``min_temp_figure_generator`` are currently
-    lightly tested. Review residuals and diagnostics before drawing conclusions.
+:::{.callout-warning}
+## Curve fits experimental
+The dose-response fitting stage (``calculate_curve_params`` / step 08) and
+the ``log10_fit`` mode of ``min_temp_figure_generator`` are currently
+lightly tested. Review residuals and diagnostics before drawing conclusions.
+:::
 
 Have questions or suggestions? Open an issue on [GitHub](https://github.com/DavidHein96/InstaWell) or reach out to the maintainers.

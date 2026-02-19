@@ -145,11 +145,10 @@ B, 0|DMSO|NPC|PBS,  1.5|DrugX|ProteinA|PBS,  6|DrugX|ProteinA|PBS
 
 ## Documentation
 
-The full documentation now lives in the MkDocs site under `docs/`. To browse locally:
+The full documentation now lives in the Quarto site under `docs/`. To browse locally:
 
 ```bash
-pip install 'instawell[docs]'
-mkdocs serve
+quarto preview docs
 ```
 
 Key pages:
@@ -282,7 +281,7 @@ CI runs `pytest --ignore=tests/test_integration_pipeline.py --ignore=tests/test_
 
 - Expand the Dash app to cover more of the pipeline steps and improve the layout designer UX.
 - Improve documentation coverage, especially around advanced usage and configuration options.
-- Setup github pages for hosting the MkDocs documentation site.
+- Setup github pages for hosting the Quarto documentation site.
 - Add more examples and tutorials in the docs.
 - Optimize performance for larger datasets, especially in the data processing functions.
 

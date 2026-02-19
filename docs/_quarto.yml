@@ -1,0 +1,42 @@
+project:
+  type: website
+  output-dir: ../site
+
+website:
+  title: InstaWell
+  description: "Tools for organizing, processing, and visualizing thermal shift assay data."
+  site-url: https://davidhein96.github.io/InstaWell/
+  repo-url: https://github.com/DavidHein96/InstaWell
+  repo-actions: [issue, source]
+  favicon: assets/favicon.ico
+
+  navbar:
+    logo: assets/instawell-icon-256.png
+    logo-href: index.md
+    title-href: index.md
+    left:
+      - text: Overview
+        href: index.md
+      - text: Pipeline
+        href: pipeline.md
+      - text: Dash App
+        href: dash_app.md
+      - text: Fuzz Testing
+        href: fuzz_testing.md
+      - text: Development
+        href: development.md
+      - text: Changelog
+        href: https://github.com/DavidHein96/InstaWell/blob/dev/CHANGELOG.md
+    right:
+      - icon: github
+        href: https://github.com/DavidHein96/InstaWell
+
+format:
+  html:
+    theme:
+      light: sandstone
+      dark: darkly
+    toc: true
+    toc-depth: 3
+    code-copy: true
+    highlight-style: github

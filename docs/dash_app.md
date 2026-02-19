@@ -1,6 +1,6 @@
 # Dash App
 
-![InstaWell icon](assets/instawell-icon-256.png){: style="width:90px"}
+
 
 The Dash interface exposes the entire InstaWell pipeline plus a layout designer, CSV upload, validation, and figure browser. This page walks through each card on the page and the architecture behind it.
 

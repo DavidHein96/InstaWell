@@ -1,6 +1,5 @@
 # Development & Documentation
 
-![InstaWell icon](assets/instawell-icon-256.png){: style="width:90px"}
 
 This project ships both a Python package and a Dash application. The following sections explain how to set up a development environment, run tests, and release new versions.
 
@@ -57,17 +56,16 @@ uv lock --upgrade
 
 ## Building Docs
 
-The MkDocs site lives in the root `mkdocs.yml` and the `docs/` directory. Serve locally with:
+The Quarto site lives in the `docs/` directory. Serve locally with:
 
 ```bash
-uv sync --extra docs
-uv run mkdocs serve
+quarto preview docs
 ```
 
-This spins up a preview at `http://127.0.0.1:8000`. To produce static HTML, run:
+This spins up a live preview. To produce static HTML, run:
 
 ```bash
-uv run mkdocs build
+quarto render docs
 ```
 
 ## CI Pipeline
@@ -79,7 +77,7 @@ Every push to `dev` and every pull request targeting `dev` runs four jobs in Git
 | **lint** | `ruff check` + `ty check` |
 | **test** | `pytest` on Python 3.10 and 3.12 (skips real-data integration tests) |
 | **audit** | `pip-audit` for known dependency vulnerabilities |
-| **docs** | `mkdocs build --strict` for broken links or syntax errors |
+| **docs** | `quarto render docs` for broken links or syntax errors |
 
 ## Releasing
 
@@ -106,7 +104,7 @@ The release pipeline uses [Trusted Publishers](https://docs.pypi.org/trusted-pub
 
 ## Contributing Documentation
 
-- Keep README concise&mdash;link to the appropriate MkDocs page for longer guides.
+- Keep README concise&mdash;link to the appropriate Quarto page for longer guides.
 - Use relative links (`[Pipeline](pipeline.md)`) so that Markdown works both locally and in the hosted site.
 - Store shared assets in `docs/assets/`.
-- After editing docs, run `mkdocs serve` and follow the console output for broken links or syntax errors.
+- After editing docs, run `quarto preview docs` and check the console output for broken links or syntax errors.
