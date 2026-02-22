@@ -1,14 +1,12 @@
 # Dash App
 
-
-
 The Dash interface exposes the entire InstaWell pipeline plus a layout designer, CSV upload, validation, and figure browser. This page walks through each card on the page and the architecture behind it.
 
 ## Launching
 
 ```bash
 pip install 'instawell[dash]'
-instawell-dash --host 0.0.0.0 --port 8060 --experiments-root experiments
+instawell-dash --port 8060 --experiments-root experiments
 # or python -m instawell.dash_app.app --port 9000
 ```
 
